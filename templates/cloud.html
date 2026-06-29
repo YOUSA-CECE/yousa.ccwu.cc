@@ -5,36 +5,64 @@
 .cloud-shell { max-width: 1000px; margin: 0 auto; }
 .cloud-header { padding: 1.5rem 2rem; margin-bottom: 1.5rem;
   display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
+.cloud-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.cloud-actions button, .cloud-actions .upload-btn { background: var(--accent); color:#fff; border:none;
+  border-radius:999px; padding:0.4rem 1rem; font-size:0.82rem; cursor:pointer; transition:opacity 0.2s; }
+.cloud-actions button:hover, .cloud-actions .upload-btn:hover { opacity:0.85; }
 .cloud-search { display: flex; align-items: center; gap: 0.5rem;
   background: rgba(255,255,255,0.4); border: 1px solid var(--border); border-radius: 999px;
   padding: 0.3rem 0.3rem 0.3rem 1rem; }
 .cloud-search input { border: none; background: transparent; padding: 0.4rem 0;
   font-size: 0.9rem; outline: none; width: 160px; font-family: inherit; }
 .cloud-search input:focus { width: 220px; }
-.cloud-search button { background: var(--accent); color: #fff; border: none;
+.cloud-search button { background: var(--accent-2); color: #fff; border: none;
   border-radius: 999px; padding: 0.35rem 0.9rem; font-size: 0.8rem; cursor: pointer; }
-.cloud-stats { display: flex; gap: 1.5rem; margin-bottom: 1.2rem; }
+.cloud-stats { display: flex; gap: 1.5rem; margin-bottom: 1.2rem; flex-wrap:wrap; }
 .cloud-stat { font-size: 0.85rem; color: var(--text-muted); }
 .cloud-stat strong { color: var(--text); }
 .breadcrumb { padding: 0.6rem 1.2rem; margin-bottom: 1rem; border-radius: var(--radius-sm); font-size: 0.9rem; }
 .breadcrumb a { color: var(--accent-2); text-decoration: none; }
 .breadcrumb-sep { margin: 0 0.4rem; color: var(--text-dim); }
 .file-list { display: flex; flex-direction: column; gap: 0.3rem; }
-.file-item { display: flex; align-items: center; padding: 0.7rem 1rem; border-radius: var(--radius-sm);
+.file-item { display: flex; align-items: center; padding: 0.55rem 1rem; border-radius: var(--radius-sm);
   transition: background 0.15s; text-decoration: none; color: var(--text); }
 .file-item:hover { background: rgba(255,255,255,0.4); }
 .file-icon { font-size: 1.1rem; margin-right: 0.8rem; flex-shrink: 0; width: 1.4rem; text-align: center; }
 .file-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.92rem; }
+.file-name a { color: var(--text); text-decoration: none; }
+.file-name a:hover { color: var(--accent); }
 .file-meta { display: flex; align-items: center; gap: 0.6rem; flex-shrink: 0; }
 .file-meta span { color: var(--text-dim); font-size: 0.78rem; }
 .file-sep { color: var(--border-dark); }
+.file-actions { display: flex; gap: 0.3rem; margin-left: 0.8rem; flex-shrink: 0; }
+.file-actions button { background: none; border: 1px solid transparent; border-radius: 4px;
+  cursor: pointer; font-size: 0.75rem; padding: 0.15rem 0.4rem; color: var(--text-muted); transition: all 0.15s; }
+.file-actions button:hover { border-color: var(--border-dark); background: rgba(255,255,255,0.3); color: var(--text); }
+.file-actions .del-btn:hover { border-color: #e74c3c; color: #e74c3c; }
 .hidden { display: none !important; }
 .cloud-empty { text-align: center; padding: 3rem 1rem; color: var(--text-muted); }
+.cloud-toast { position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%);
+  background: rgba(0,0,0,0.8); color: #fff; padding: 0.6rem 1.5rem; border-radius: 999px;
+  font-size: 0.85rem; z-index: 9999; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+.cloud-toast.show { opacity: 1; }
+/* Upload zone */
+.upload-zone { border: 2px dashed var(--border-dark); border-radius: var(--radius);
+  padding: 2rem; text-align: center; margin-bottom: 1rem; cursor: pointer;
+  transition: border-color 0.2s, background 0.2s; display: none; }
+.upload-zone.dragover { border-color: var(--accent); background: rgba(215,102,146,0.06); }
+.upload-zone.open { display: block; }
+.upload-zone p { margin: 0.3rem 0; color: var(--text-muted); font-size: 0.9rem; }
+.upload-zone .btn { display: inline-block; margin-top: 0.5rem; }
+.upload-result { margin-top: 0.8rem; max-height: 200px; overflow-y: auto; text-align: left; }
+.upload-result-item { font-size: 0.82rem; padding: 0.2rem 0; }
+.upload-result-item.ok { color: #27ae60; }
+.upload-result-item.err { color: #e74c3c; }
 @media (max-width: 640px) {
   .cloud-header { flex-direction: column; align-items: stretch; }
   .cloud-search { width: 100%; }
   .cloud-search input { flex: 1; }
   .file-meta span:not(:first-child) { display: none; }
+  .file-actions { margin-left: 0.3rem; }
 }
 </style>
 {% endblock %}
@@ -43,11 +71,19 @@
     <div class="cloud-header glass-panel">
         <div>
             <h1>☁️ 云盘</h1>
-            <p class="page-desc" style="margin-top:0.2rem">文件管理与下载</p>
+            <p class="page-desc" style="margin-top:0.2rem">文件管理 · 上传 · 下载 · 预览</p>
         </div>
-        <div class="cloud-search">
-            <input type="search" id="cloud-filter" placeholder="筛选文件名…" oninput="filterFiles(this.value)">
-            <button onclick="document.getElementById('cloud-filter').value='';filterFiles('')">✕</button>
+        <div style="display:flex;gap:0.8rem;align-items:center;flex-wrap:wrap">
+            <div class="cloud-search">
+                <input type="search" id="cloud-filter" placeholder="筛选文件名…" oninput="filterFiles(this.value)">
+                <button onclick="document.getElementById('cloud-filter').value='';filterFiles('')">✕</button>
+            </div>
+            {% if is_admin %}
+            <div class="cloud-actions">
+                <button onclick="toggleUpload()">📤 上传</button>
+                <button onclick="promptMkdir()">📁 新建文件夹</button>
+            </div>
+            {% endif %}
         </div>
     </div>
 
@@ -57,6 +93,16 @@
         {% if total_size %}
         <span class="cloud-stat">💾 共 <strong>{{ total_size }}</strong></span>
         {% endif %}
+    </div>
+
+    <!-- Upload drop zone -->
+    <div class="upload-zone glass-panel" id="upload-zone">
+        <p>📤 拖拽文件到此处上传</p>
+        <p style="font-size:0.8rem">或点击选择文件</p>
+        <input type="file" id="file-input" multiple style="display:none"
+               onchange="uploadFiles(this.files)">
+        <button class="form-btn form-btn-sm" onclick="document.getElementById('file-input').click()">选择文件</button>
+        <div class="upload-result" id="upload-result"></div>
     </div>
 
     <nav class="breadcrumb glass-panel">
@@ -78,46 +124,167 @@
         {% endif %}
 
         {% for d in dirs %}
-        <a href="/cloud/{{ d.path }}" class="file-item dir-item" data-name="{{ d.name }}">
+        <div class="file-item" data-name="{{ d.name }}">
             <span class="file-icon">📁</span>
-            <span class="file-name">{{ d.name }}</span>
+            <span class="file-name"><a href="/cloud/{{ d.path }}">{{ d.name }}</a></span>
             <span class="file-meta">
                 <span>文件夹</span>
                 <span class="file-sep">·</span>
                 <span>{{ d.modified }}</span>
             </span>
-        </a>
+            {% if is_admin %}
+            <span class="file-actions">
+                <button class="del-btn" onclick="deleteItem('{{ d.path }}')" title="删除">🗑️</button>
+            </span>
+            {% endif %}
+        </div>
         {% endfor %}
 
         {% for f in files %}
-        <a href="/files/{{ f.path }}" class="file-item file-item-file" data-name="{{ f.name }}" download>
+        <div class="file-item" data-name="{{ f.name }}">
             <span class="file-icon">{{ f.icon }}</span>
-            <span class="file-name">{{ f.name }}</span>
+            <span class="file-name">
+                {% if f.name.endswith('.md') or f.name.endswith('.txt') or f.name.endswith('.py') or f.name.endswith('.js') or f.name.endswith('.html') or f.name.endswith('.css') or f.name.endswith('.json') or f.name.endswith('.sh') or f.name.endswith('.csv') %}
+                <a href="/cloud/preview/{{ f.path }}">{{ f.name }}</a>
+                {% else %}
+                <a href="/files/{{ f.path }}" download>{{ f.name }}</a>
+                {% endif %}
+            </span>
             <span class="file-meta">
                 <span>{{ f.size_hr }}</span>
                 <span class="file-sep">·</span>
                 <span>{{ f.modified }}</span>
             </span>
-        </a>
+            {% if is_admin %}
+            <span class="file-actions">
+                <button onclick="window.open('/files/{{ f.path }}')" title="下载">⬇️</button>
+                <button class="del-btn" onclick="deleteItem('{{ f.path }}')" title="删除">🗑️</button>
+            </span>
+            {% endif %}
+        </div>
         {% endfor %}
     </div>
 
     {% if not dirs and not files %}
     <div class="cloud-empty glass-panel">
         <p>📭 暂无文件</p>
+        {% if is_admin %}
+        <p style="font-size:0.85rem;color:var(--text-dim);margin-top:0.5rem">点击「上传」按钮添加文件</p>
+        {% endif %}
     </div>
     {% endif %}
 </section>
 
+<div class="cloud-toast" id="cloud-toast"></div>
+
 <script>
+var currentPath = '{{ current_path }}';
+var isAdmin = {{ 'true' if is_admin else 'false' }};
+
+function toast(msg) {
+    var el = document.getElementById('cloud-toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(el._timer);
+    el._timer = setTimeout(function(){ el.classList.remove('show'); }, 2500);
+}
+
 function filterFiles(query) {
     query = query.trim().toLowerCase();
     document.querySelectorAll('.file-item').forEach(function(el) {
         var name = (el.dataset.name || '').toLowerCase();
-        if (!query || name.indexOf(query) !== -1) {
-            el.classList.remove('hidden');
+        el.classList.toggle('hidden', query && name.indexOf(query) === -1);
+    });
+}
+
+function toggleUpload() {
+    var zone = document.getElementById('upload-zone');
+    zone.classList.toggle('open');
+}
+
+// Drag & drop
+(function(){
+    var zone = document.getElementById('upload-zone');
+    document.addEventListener('dragover', function(e) { e.preventDefault(); });
+    document.addEventListener('drop', function(e) { e.preventDefault(); });
+    if (!zone) return;
+    zone.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        zone.classList.add('dragover');
+        zone.classList.add('open');
+    });
+    zone.addEventListener('dragleave', function() {
+        zone.classList.remove('dragover');
+    });
+    zone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        zone.classList.remove('dragover');
+        if (e.dataTransfer.files.length) uploadFiles(e.dataTransfer.files);
+    });
+})();
+
+function uploadFiles(files) {
+    if (!files || !files.length) return;
+    var formData = new FormData();
+    for (var i = 0; i < files.length; i++) {
+        formData.append('file', files[i]);
+    }
+    formData.append('path', currentPath);
+    var resultDiv = document.getElementById('upload-result');
+    resultDiv.innerHTML = '<div class="upload-result-item">⏳ 上传中…</div>';
+    fetch('/cloud/upload', { method: 'POST', body: formData })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.results) {
+            resultDiv.innerHTML = data.results.map(function(r) {
+                return '<div class="upload-result-item ' + (r.status === '成功' ? 'ok' : 'err') + '">'
+                    + (r.status === '成功' ? '✅' : '❌') + ' ' + r.name
+                    + (r.size ? ' (' + r.size + ')' : '')
+                    + (r.reason ? ' — ' + r.reason : '')
+                    + '</div>';
+            }).join('');
+            toast(data.results.filter(function(r) { return r.status === '成功'; }).length + ' 个文件上传成功');
+            setTimeout(function(){ location.reload(); }, 1500);
         } else {
-            el.classList.add('hidden');
+            resultDiv.innerHTML = '<div class="upload-result-item err">❌ ' + (data.error || '上传失败') + '</div>';
+        }
+    })
+    .catch(function(err) {
+        resultDiv.innerHTML = '<div class="upload-result-item err">❌ 网络错误</div>';
+    });
+}
+
+function deleteItem(path) {
+    if (!confirm('确定删除「' + path.split('/').pop() + '」？')) return;
+    var formData = new FormData();
+    formData.append('path', (currentPath ? currentPath + '/' : '') + path);
+    fetch('/cloud/delete', { method: 'POST', body: formData })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.status === 'ok') {
+            toast('已删除');
+            setTimeout(function(){ location.reload(); }, 500);
+        } else {
+            toast('删除失败: ' + (data.error || ''));
+        }
+    });
+}
+
+function promptMkdir() {
+    var name = prompt('输入新文件夹名称：');
+    if (!name || !name.trim()) return;
+    name = name.trim();
+    var formData = new FormData();
+    formData.append('name', name);
+    formData.append('path', currentPath);
+    fetch('/cloud/mkdir', { method: 'POST', body: formData })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.status === 'ok') {
+            toast('文件夹「' + name + '」已创建');
+            setTimeout(function(){ location.reload(); }, 500);
+        } else {
+            toast('创建失败: ' + (data.error || ''));
         }
     });
 }

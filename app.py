@@ -857,7 +857,157 @@ def cloud_drive(subpath=None):
 
     return render_template("cloud.html", dirs=dirs, files=files,
                            current_path=current_path, breadcrumbs=breadcrumbs,
-                           total_size=format_size(total_bytes))
+                           total_size=format_size(total_bytes),
+                           is_admin=current_user.is_admin)
+
+
+# ── Cloud Drive: Upload / Delete / Mkdir ────────────────────────────────
+
+ALLOWED_UPLOAD_EXTS = {
+    ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".svg",
+    ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".csv",
+    ".txt", ".md", ".json", ".xml", ".yaml", ".yml",
+    ".zip", ".rar", ".7z", ".tar", ".gz",
+    ".mp3", ".mp4",
+    ".py", ".js", ".html", ".css", ".sh", ".bat",
+    ".apk",
+}
+
+
+@app.route("/cloud/upload", methods=["POST"])
+@login_required
+@admin_required
+def cloud_upload():
+    """Upload files to the cloud drive."""
+    subpath = request.form.get("path", "").strip()
+    base = FILE_DIR.resolve()
+    target = (base / subpath).resolve() if subpath else base
+
+    if not str(target).startswith(str(base)):
+        return jsonify({"error": "路径不允许"}), 403
+    if not target.exists():
+        return jsonify({"error": "目录不存在"}), 404
+    if not target.is_dir():
+        return jsonify({"error": "目标不是目录"}), 400
+
+    if "file" not in request.files:
+        return jsonify({"error": "未选择文件"}), 400
+
+    uploaded = request.files.getlist("file")
+    results = []
+    for f in uploaded:
+        if not f.filename:
+            continue
+        ext = Path(f.filename).suffix.lower()
+        if ext and ext not in ALLOWED_UPLOAD_EXTS:
+            results.append({"name": f.filename, "status": "拒绝", "reason": f"不允许的后缀 {ext}"})
+            continue
+        dest = target / f.filename
+        try:
+            f.save(str(dest))
+            results.append({"name": f.filename, "status": "成功", "size": format_size(dest.stat().st_size)})
+        except Exception as e:
+            results.append({"name": f.filename, "status": "失败", "reason": str(e)})
+
+    return jsonify({"results": results})
+
+
+@app.route("/cloud/delete", methods=["POST"])
+@login_required
+@admin_required
+def cloud_delete():
+    """Delete a file or empty directory from cloud drive."""
+    path = request.form.get("path", "").strip()
+    if not path:
+        return jsonify({"error": "参数缺失"}), 400
+
+    base = FILE_DIR.resolve()
+    target = (base / path).resolve()
+
+    if not str(target).startswith(str(base)):
+        return jsonify({"error": "路径不允许"}), 403
+    if not target.exists():
+        return jsonify({"error": "文件不存在"}), 404
+
+    try:
+        if target.is_dir():
+            # Only delete empty directories
+            target.rmdir()
+        else:
+            target.unlink()
+        return jsonify({"status": "ok"})
+    except OSError as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/cloud/mkdir", methods=["POST"])
+@login_required
+@admin_required
+def cloud_mkdir():
+    """Create a new directory in the cloud drive."""
+    subpath = request.form.get("path", "").strip()
+    name = request.form.get("name", "").strip()
+    if not name:
+        return jsonify({"error": "目录名不能为空"}), 400
+
+    base = FILE_DIR.resolve()
+    parent = (base / subpath).resolve() if subpath else base
+
+    if not str(parent).startswith(str(base)):
+        return jsonify({"error": "路径不允许"}), 403
+
+    new_dir = parent / name
+    try:
+        new_dir.mkdir(exist_ok=True)
+        return jsonify({"status": "ok", "name": name})
+    except OSError as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/cloud/preview/<path:filepath>")
+@login_required
+def cloud_preview(filepath):
+    """Preview a text/markdown file inline."""
+    base = FILE_DIR.resolve()
+    target = (base / filepath).resolve()
+
+    if not str(target).startswith(str(base)):
+        abort(403)
+    if not target.exists() or not target.is_file():
+        abort(404)
+
+    ext = target.suffix.lower()
+
+    if ext in (".md", ".txt", ".py", ".js", ".html", ".css", ".json",
+               ".xml", ".yaml", ".yml", ".sh", ".bat", ".csv", ".log"):
+        try:
+            raw = target.read_text(encoding="utf-8")
+        except Exception:
+            try:
+                raw = target.read_text(encoding="gbk")
+            except Exception:
+                raw = "[无法解码此文件]"
+
+        html_content = ""
+        if ext == ".md":
+            html_content = render_markdown(raw)
+        else:
+            import html as _html
+            html_content = f"<pre style='background:rgba(30,36,44,.88);color:#e4e9ef;padding:1.2rem;border-radius:var(--radius-sm);overflow-x:auto;font-size:0.85rem;line-height:1.5'><code>{_html.escape(raw)}</code></pre>"
+
+        return render_template("cloud_preview.html",
+                               filename=target.name,
+                               filepath=filepath,
+                               html_content=html_content,
+                               ext=ext)
+
+    # For images, redirect to gallery
+    if ext in (".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".svg"):
+        return redirect(url_for("gallery", subpath=filepath))
+
+    # For other files, trigger download
+    return send_from_directory(target.parent, target.name,
+                               as_attachment=True)
 
 
 @app.route("/gallery/")

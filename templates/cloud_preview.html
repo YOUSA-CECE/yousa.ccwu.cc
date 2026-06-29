@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}{{ filename }} — 云盘预览{% endblock %}
+{% block content %}
+<section style="max-width:900px;margin:0 auto">
+    <div class="glass-panel" style="padding:1.2rem 1.5rem;margin-bottom:1.2rem;
+         display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem">
+        <div>
+            <h2 style="margin:0;font-size:1.1rem">
+                {% if ext == '.md' %}📝{% elif ext == '.json' %}📋{% elif ext in ('.py','.js','.html','.css','.sh','.bat') %}💻{% else %}📄{% endif %}
+                {{ filename }}
+            </h2>
+        </div>
+        <div style="display:flex;gap:0.5rem">
+            <a href="/cloud/{{ filepath.rsplit('/', 1)[0] if '/' in filepath else '' }}" class="form-btn form-btn-sm">← 返回目录</a>
+            <a href="/files/{{ filepath }}" class="form-btn form-btn-sm" download>⬇ 下载</a>
+        </div>
+    </div>
+    <div class="glass-panel" style="padding:0;overflow:hidden">
+        {% if ext == '.md' %}
+        <div class="markdown-body" style="padding:1.5rem">
+            {{ html_content|safe }}
+        </div>
+        {% else %}
+        {{ html_content|safe }}
+        {% endif %}
+    </div>
+</section>
+{% endblock %}
