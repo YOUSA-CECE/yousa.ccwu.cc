@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.DownloadManager;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
@@ -32,6 +33,12 @@ public class MainActivity extends Activity {
     private static final String APP_URL = "https://yousa.ccwu.cc";
     private static final String APP_HOST = "yousa.ccwu.cc";
     private static final float REFRESH_DISTANCE = 150f;
+    private static final String UPDATE_PROMPT_PREFS = "yousa_update_prompt";
+    private static final String KEY_UPDATE_CODE = "version_code";
+    private static final String KEY_UPDATE_NAME = "version_name";
+    private static final String KEY_UPDATE_URL = "apk_url";
+    private static final String KEY_UPDATE_LOG = "changelog";
+    private static final String KEY_UPDATE_SIZE = "apk_size";
 
     private WebView webView;
     private ProgressBar pageProgress;
@@ -42,6 +49,10 @@ public class MainActivity extends Activity {
     private View refreshIndicator;
     private View refreshLogo;
     private ProgressBar refreshSpinner;
+    private View updatePanel;
+    private TextView updateVersion;
+    private TextView updateSize;
+    private TextView updateChangelog;
     private float touchStartY;
     private boolean canPull;
     private boolean splashDismissed;
@@ -50,6 +61,7 @@ public class MainActivity extends Activity {
     private boolean authNavigationPending;
     private boolean installPermissionRequested;
     private boolean updateCheckScheduled;
+    private boolean pageVisible;
     private int authWatchdogToken;
     private long splashStartedAt;
 
@@ -70,9 +82,15 @@ public class MainActivity extends Activity {
         refreshIndicator = findViewById(R.id.refreshIndicator);
         refreshLogo = findViewById(R.id.refreshLogo);
         refreshSpinner = findViewById(R.id.refreshSpinner);
+        updatePanel = findViewById(R.id.updatePanel);
+        updateVersion = findViewById(R.id.updateVersion);
+        updateSize = findViewById(R.id.updateSize);
+        updateChangelog = findViewById(R.id.updateChangelog);
         refreshIndicator.setTranslationY(-100f);
         refreshIndicator.setAlpha(0f);
         findViewById(R.id.retryButton).setOnClickListener(v -> retryCurrentPage());
+        findViewById(R.id.updateLaterButton).setOnClickListener(v -> dismissPendingUpdate());
+        findViewById(R.id.updateNowButton).setOnClickListener(v -> downloadPendingUpdate());
 
         configureWebView();
 
@@ -161,9 +179,11 @@ public class MainActivity extends Activity {
 
             @Override
             public void onPageCommitVisible(WebView view, String url) {
+                pageVisible = true;
                 errorPanel.setVisibility(View.GONE);
                 animatePageIn();
                 dismissSplash();
+                showPendingUpdateIfReady();
                 scheduleUpdateCheck();
             }
 
@@ -454,11 +474,16 @@ public class MainActivity extends Activity {
     private void checkForUpdate() {
         UpdateChecker.check(this, new UpdateChecker.Callback() {
             @Override
-            public void onResult(boolean hasUpdate, String versionName,
+            public void onResult(boolean hasUpdate, int versionCode, String versionName,
                                  String apkUrl, String changelog, long apkSizeBytes) {
-                if (hasUpdate && !isFinishing()) {
-                    runOnUiThread(() -> UpdateChecker.showUpdateDialog(
-                        MainActivity.this, versionName, apkUrl, changelog, apkSizeBytes));
+                if (hasUpdate) {
+                    savePendingUpdate(versionCode, versionName, apkUrl,
+                        changelog, apkSizeBytes);
+                    if (!isFinishing()) {
+                        runOnUiThread(MainActivity.this::showPendingUpdateIfReady);
+                    }
+                } else {
+                    clearPendingUpdate();
                 }
             }
 
@@ -467,6 +492,78 @@ public class MainActivity extends Activity {
                 // 更新检查失败不影响主页面使用。
             }
         });
+    }
+
+    private void savePendingUpdate(int versionCode, String versionName,
+                                   String apkUrl, String changelog, long apkSizeBytes) {
+        getSharedPreferences(UPDATE_PROMPT_PREFS, MODE_PRIVATE).edit()
+            .putInt(KEY_UPDATE_CODE, versionCode)
+            .putString(KEY_UPDATE_NAME, versionName)
+            .putString(KEY_UPDATE_URL, apkUrl)
+            .putString(KEY_UPDATE_LOG, changelog)
+            .putLong(KEY_UPDATE_SIZE, apkSizeBytes)
+            .apply();
+    }
+
+    private void showPendingUpdateIfReady() {
+        if (!pageVisible || isFinishing()
+            || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1
+                && isDestroyed())) {
+            return;
+        }
+        SharedPreferences preferences =
+            getSharedPreferences(UPDATE_PROMPT_PREFS, MODE_PRIVATE);
+        int remoteCode = preferences.getInt(KEY_UPDATE_CODE, -1);
+        if (remoteCode <= getLocalVersionCode()) {
+            clearPendingUpdate();
+            return;
+        }
+        String versionName = preferences.getString(KEY_UPDATE_NAME, "");
+        String changelog = preferences.getString(
+            KEY_UPDATE_LOG, "性能与稳定性改进");
+        long apkSize = preferences.getLong(KEY_UPDATE_SIZE, -1);
+        updateVersion.setText("v" + versionName);
+        updateSize.setText("安装包大小：" + UpdateChecker.formatSize(apkSize));
+        updateChangelog.setText(changelog);
+        updatePanel.setAlpha(1f);
+        updatePanel.setVisibility(View.VISIBLE);
+        updatePanel.bringToFront();
+    }
+
+    private int getLocalVersionCode() {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                return (int) getPackageManager()
+                    .getPackageInfo(getPackageName(), 0).getLongVersionCode();
+            }
+            return getPackageManager().getPackageInfo(getPackageName(), 0).versionCode;
+        } catch (Exception e) {
+            return Integer.MAX_VALUE;
+        }
+    }
+
+    private void dismissPendingUpdate() {
+        clearPendingUpdate();
+        updatePanel.setVisibility(View.GONE);
+    }
+
+    private void downloadPendingUpdate() {
+        SharedPreferences preferences =
+            getSharedPreferences(UPDATE_PROMPT_PREFS, MODE_PRIVATE);
+        String versionName = preferences.getString(KEY_UPDATE_NAME, "latest");
+        String apkUrl = preferences.getString(KEY_UPDATE_URL, "");
+        if (apkUrl == null || apkUrl.trim().isEmpty()) {
+            Toast.makeText(this, "更新地址无效，请稍后重试", Toast.LENGTH_LONG).show();
+            return;
+        }
+        clearPendingUpdate();
+        updatePanel.setVisibility(View.GONE);
+        ApkDownloadReceiver.enqueueApkDownload(
+            this, apkUrl, "yousa-v" + versionName + ".apk");
+    }
+
+    private void clearPendingUpdate() {
+        getSharedPreferences(UPDATE_PROMPT_PREFS, MODE_PRIVATE).edit().clear().apply();
     }
 
     private void scheduleUpdateCheck() {
@@ -478,6 +575,10 @@ public class MainActivity extends Activity {
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_BACK
+            && updatePanel.getVisibility() == View.VISIBLE) {
+            return true;
+        }
         if (keyCode == KeyEvent.KEYCODE_BACK && webView.canGoBack()) {
             webView.animate().alpha(0.72f).translationX(28f).setDuration(80)
                 .withEndAction(() -> webView.goBack()).start();

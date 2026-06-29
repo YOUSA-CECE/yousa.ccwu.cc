@@ -1,6 +1,5 @@
 package com.yousa.app;
 
-import android.app.AlertDialog;
 import android.content.Context;
 import android.os.Build;
 import org.json.JSONObject;
@@ -8,17 +7,26 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.CompletionService;
+import java.util.concurrent.ExecutorCompletionService;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 public final class UpdateChecker {
     public interface Callback {
-        void onResult(boolean hasUpdate, String versionName, String apkUrl,
-                      String changelog, long apkSizeBytes);
+        void onResult(boolean hasUpdate, int versionCode, String versionName,
+                      String apkUrl, String changelog, long apkSizeBytes);
         void onError(String error);
     }
 
     private static final String[] VERSION_URLS = {
         "https://yousa.ccwu.cc/static/version.json",
+        "https://cdn.jsdelivr.net/gh/YOUSA-CECE/yousa.ccwu.cc@master/static/version.json",
         "https://raw.githubusercontent.com/YOUSA-CECE/yousa.ccwu.cc/master/static/version.json"
     };
 
@@ -26,21 +34,44 @@ public final class UpdateChecker {
 
     public static void check(final Context context, final Callback callback) {
         new Thread(() -> {
+            ExecutorService executor = Executors.newFixedThreadPool(VERSION_URLS.length);
             try {
-                VersionInfo newest = null;
-                String lastError = "无法连接更新服务器";
+                CompletionService<VersionInfo> completion =
+                    new ExecutorCompletionService<>(executor);
+                List<Future<VersionInfo>> futures = new ArrayList<>();
                 for (String address : VERSION_URLS) {
+                    futures.add(completion.submit(() -> fetchVersion(address)));
+                }
+
+                VersionInfo newest = null;
+                int completed = 0;
+                int successful = 0;
+                long overallDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+                long resultDeadline = overallDeadline;
+
+                while (completed < VERSION_URLS.length) {
+                    long remaining = resultDeadline - System.nanoTime();
+                    if (remaining <= 0) break;
+                    Future<VersionInfo> future = completion.poll(remaining, TimeUnit.NANOSECONDS);
+                    if (future == null) break;
+                    completed++;
                     try {
-                        VersionInfo candidate = fetchVersion(address);
+                        VersionInfo candidate = future.get();
+                        successful++;
                         if (newest == null || candidate.versionCode > newest.versionCode) {
                             newest = candidate;
                         }
-                    } catch (Exception e) {
-                        lastError = e.getMessage() == null ? lastError : e.getMessage();
+                        if (successful == 1) {
+                            resultDeadline = Math.min(overallDeadline,
+                                System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(1400));
+                        }
+                    } catch (Exception ignored) {
                     }
                 }
+                for (Future<VersionInfo> future : futures) future.cancel(true);
+
                 if (newest == null) {
-                    callback.onError(lastError);
+                    callback.onError("无法连接更新服务器");
                     return;
                 }
 
@@ -53,10 +84,13 @@ public final class UpdateChecker {
                     localCode = context.getPackageManager()
                         .getPackageInfo(context.getPackageName(), 0).versionCode;
                 }
-                callback.onResult(newest.versionCode > localCode, newest.versionName,
-                    newest.apkUrl, newest.changelog, newest.apkSizeBytes);
+                callback.onResult(newest.versionCode > localCode, newest.versionCode,
+                    newest.versionName, newest.apkUrl, newest.changelog,
+                    newest.apkSizeBytes);
             } catch (Exception e) {
                 callback.onError(e.getMessage() == null ? "更新检查失败" : e.getMessage());
+            } finally {
+                executor.shutdownNow();
             }
         }).start();
     }
@@ -97,8 +131,8 @@ public final class UpdateChecker {
         throws Exception {
         HttpURLConnection connection =
             (HttpURLConnection) new URL(address).openConnection();
-        connection.setConnectTimeout(8000);
-        connection.setReadTimeout(8000);
+        connection.setConnectTimeout(5000);
+        connection.setReadTimeout(5000);
         connection.setRequestMethod(method);
         connection.setUseCaches(false);
         connection.setInstanceFollowRedirects(true);
@@ -120,25 +154,8 @@ public final class UpdateChecker {
         return -1;
     }
 
-    public static void showUpdateDialog(final Context context,
-                                        final String versionName,
-                                        final String apkUrl,
-                                        final String changelog,
-                                        final long apkSizeBytes) {
-        String size = apkSizeBytes > 0 ? formatSize(apkSizeBytes) : "未知";
-        String notes = changelog == null || changelog.trim().isEmpty()
-            ? "性能与稳定性改进" : changelog.trim();
-        new AlertDialog.Builder(context)
-            .setTitle("发现新版本 v" + versionName)
-            .setMessage("安装包大小：" + size + "\n\n更新日志：\n" + notes)
-            .setPositiveButton("下载并安装", (dialog, which) ->
-                ApkDownloadReceiver.enqueueApkDownload(
-                    context, apkUrl, "yousa-v" + versionName + ".apk"))
-            .setNegativeButton("暂不更新", null)
-            .show();
-    }
-
     public static String formatSize(long bytes) {
+        if (bytes < 0) return "未知";
         if (bytes < 1024) return bytes + " B";
         if (bytes < 1024L * 1024L) {
             return String.format(Locale.getDefault(), "%.1f KB", bytes / 1024d);

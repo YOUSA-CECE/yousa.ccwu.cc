@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>{% block title %}yousa.ccwu.cc{% endblock %}</title>
-    <link rel="stylesheet" href="/static/style.css?v=20260627-0043">
+    <link rel="stylesheet" href="/static/style.css?v={{ asset_version }}">
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23222831'/%3E%3Ctext x='50' y='62' text-anchor='middle' font-size='46' fill='%23f7c8d8' font-family='Times New Roman, serif'%3EY%3C/text%3E%3C/svg%3E">
     {% block head %}{% endblock %}
 </head>
@@ -225,6 +225,39 @@
                     send.textContent = '发送';
                 }
             });
+        })();
+    </script>
+    <script>
+        (function() {
+            const pages = ['/', '/wiki/', '/blog', '/about', '/app', '/guestbook'];
+            const cacheIdentity = '{{ current_user.id if current_user.is_authenticated else "guest" }}';
+            const stampKey = 'yousa-prefetch:' + cacheIdentity;
+
+            async function prefetchNavigation() {
+                const lastRun = Number(sessionStorage.getItem(stampKey) || 0);
+                if (Date.now() - lastRun < 60000) return;
+                sessionStorage.setItem(stampKey, String(Date.now()));
+
+                for (const path of pages) {
+                    if (path === location.pathname) continue;
+                    try {
+                        await fetch(path, {
+                            method: 'GET',
+                            credentials: 'same-origin',
+                            cache: 'default',
+                            headers: {'X-Yousa-Prefetch': '1'}
+                        });
+                    } catch (_) {
+                        // Prefetch is an optional speed-up and must never affect navigation.
+                    }
+                }
+            }
+
+            if ('requestIdleCallback' in window) {
+                requestIdleCallback(prefetchNavigation, {timeout: 2500});
+            } else {
+                setTimeout(prefetchNavigation, 1600);
+            }
         })();
     </script>
     {% block scripts %}{% endblock %}

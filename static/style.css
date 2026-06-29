@@ -1834,3 +1834,37 @@ button:active,
         padding: 1.5rem 1rem;
     }
 }
+
+.admin-table-wrap {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.admin-user-table {
+    min-width: 1080px;
+}
+
+.activity-time {
+    white-space: nowrap;
+}
+
+.source-badge {
+    display: inline-block;
+    margin-left: .35rem;
+    padding: .08rem .38rem;
+    border-radius: 999px;
+    font-size: .72rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.source-app {
+    color: #8c3158;
+    background: rgba(215, 102, 146, .16);
+}
+
+.source-web {
+    color: #356f89;
+    background: rgba(94, 158, 188, .16);
+}

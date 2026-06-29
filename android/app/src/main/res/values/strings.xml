@@ -11,4 +11,8 @@
     <string name="retry">重新连接</string>
     <string name="download_started">已开始下载</string>
     <string name="download_failed">无法开始下载</string>
+    <string name="update_available">发现新版本</string>
+    <string name="update_notes">更新日志</string>
+    <string name="update_later">暂不更新</string>
+    <string name="update_now">下载并安装</string>
 </resources>

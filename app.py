@@ -6,14 +6,17 @@ import re
 import json
 import sqlite3
 import mimetypes
+import threading
+import time
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import wraps
+from zoneinfo import ZoneInfo
 
 import markdown
 from flask import (
     Flask, render_template, request, jsonify, send_from_directory,
-    abort, redirect, url_for, flash, g
+    abort, redirect, url_for, flash, g, session
 )
 from flask_login import (
     LoginManager, UserMixin, login_user, logout_user,
@@ -31,6 +34,20 @@ FILE_DIR = _FILE_DIR_CANDIDATE if _FILE_DIR_CANDIDATE.exists() else (BASE_DIR / 
 DB_PATH = BASE_DIR / "users.db"
 TEMPLATES_DIR = BASE_DIR / "templates"
 STATIC_DIR = BASE_DIR / "static"
+SAFE_CACHE_PATHS = {"/", "/wiki/", "/blog", "/about", "/app", "/download", "/guestbook"}
+CACHE_INVALIDATING_ENDPOINTS = {
+    "login", "logout", "register", "delete_user", "change_role",
+    "update_nickname", "change_password", "blog_write", "blog_delete",
+    "guestbook", "guestbook_delete",
+}
+ACTIVITY_COLUMNS = {
+    "last_seen_at": "TEXT",
+    "last_seen_source": "TEXT",
+    "last_app_seen_at": "TEXT",
+    "last_web_seen_at": "TEXT",
+}
+_schema_lock = threading.Lock()
+_activity_schema_path = None
 
 app = Flask(__name__, template_folder=str(TEMPLATES_DIR),
             static_folder=str(STATIC_DIR), static_url_path="/static")
@@ -74,6 +91,7 @@ def init_db():
             created_at TEXT DEFAULT (datetime('now'))
         )
     """)
+    migrate_user_activity_schema(db)
     # Blog posts table
     db.execute("""
         CREATE TABLE IF NOT EXISTS posts (
@@ -107,6 +125,41 @@ def init_db():
         db.commit()
         print("  👤 默认管理员已创建: admin / admin123")
     db.close()
+
+
+def migrate_user_activity_schema(db=None):
+    """Idempotently add activity columns to an existing users table."""
+    owns_connection = db is None
+    if owns_connection:
+        db = sqlite3.connect(str(DB_PATH))
+    table = db.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='users'"
+    ).fetchone()
+    if table:
+        existing = {row[1] for row in db.execute("PRAGMA table_info(users)").fetchall()}
+        for column, column_type in ACTIVITY_COLUMNS.items():
+            if column not in existing:
+                try:
+                    db.execute(f"ALTER TABLE users ADD COLUMN {column} {column_type}")
+                except sqlite3.OperationalError as error:
+                    # Multiple WSGI workers can race during the first deployment.
+                    if "duplicate column name" not in str(error).lower():
+                        raise
+        db.commit()
+    if owns_connection:
+        db.close()
+
+
+def ensure_activity_schema():
+    """Run once per process/database path, including WSGI imports."""
+    global _activity_schema_path
+    db_path = str(DB_PATH.resolve())
+    if _activity_schema_path == db_path:
+        return
+    with _schema_lock:
+        if _activity_schema_path != db_path:
+            migrate_user_activity_schema()
+            _activity_schema_path = db_path
 
 
 # ── User Model ──────────────────────────────────────────────────────
@@ -159,16 +212,99 @@ def user_or_admin(f):
 
 @app.context_processor
 def inject_user():
-    return dict(current_user=current_user)
+    try:
+        asset_version = int((STATIC_DIR / "style.css").stat().st_mtime)
+    except OSError:
+        asset_version = 1
+    return dict(current_user=current_user, asset_version=asset_version)
+
+
+@app.template_filter("hk_time")
+def format_hk_time(value):
+    if not value:
+        return "暂无"
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed.astimezone(ZoneInfo("Asia/Hong_Kong")).strftime("%Y-%m-%d %H:%M")
+    except (TypeError, ValueError):
+        return str(value)
+
+
+@app.before_request
+def track_user_activity():
+    ensure_activity_schema()
+    if (
+        request.endpoint == "static"
+        or request.headers.get("X-Yousa-Prefetch") == "1"
+        or not current_user.is_authenticated
+    ):
+        return None
+
+    source = "app" if "YousaAndroid" in request.headers.get("User-Agent", "") else "web"
+    throttle_key = f"_activity_write_{source}"
+    now_epoch = int(time.time())
+    if now_epoch - int(session.get(throttle_key, 0)) < 60:
+        return None
+
+    now_utc = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    source_column = "last_app_seen_at" if source == "app" else "last_web_seen_at"
+    db = get_db()
+    try:
+        db.execute(
+            f"""UPDATE users
+                SET last_seen_at = ?, last_seen_source = ?, {source_column} = ?
+                WHERE id = ?""",
+            (now_utc, source, now_utc, current_user.id),
+        )
+        db.commit()
+        session[throttle_key] = now_epoch
+    except sqlite3.Error:
+        db.rollback()
+    return None
 
 
 @app.after_request
-def disable_auth_page_cache(response):
-    """Prevent WebView from restoring stale login/logout responses."""
-    if request.path in ("/login", "/logout"):
+def apply_cache_policy(response):
+    """Cache safe navigation pages privately and keep sensitive responses fresh."""
+    is_static = request.endpoint == "static"
+    is_safe_page = (
+        request.method == "GET"
+        and request.path in SAFE_CACHE_PATHS
+        and response.status_code == 200
+        and response.mimetype == "text/html"
+    )
+
+    if is_static:
+        if request.path.endswith("/version.json"):
+            response.headers["Cache-Control"] = "no-store, max-age=0"
+        elif request.path.lower().endswith(".apk"):
+            response.headers["Cache-Control"] = "public, max-age=3600, immutable"
+        else:
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+    elif is_safe_page:
+        response.headers["Cache-Control"] = (
+            "private, max-age=90, stale-while-revalidate=300"
+        )
+        vary = response.headers.get("Vary", "")
+        vary_values = {item.strip() for item in vary.split(",") if item.strip()}
+        vary_values.add("Cookie")
+        response.headers["Vary"] = ", ".join(sorted(vary_values))
+        response.headers["X-Yousa-Cache"] = "safe-navigation"
+    else:
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
         response.headers["Pragma"] = "no-cache"
         response.headers["Expires"] = "0"
+
+    if (
+        request.endpoint == "logout"
+        or (
+            request.method != "GET"
+            and request.endpoint in CACHE_INVALIDATING_ENDPOINTS
+        )
+    ):
+        response.headers["Clear-Site-Data"] = '"cache"'
     return response
 
 
@@ -479,7 +615,12 @@ def logout():
 @admin_required
 def admin_panel():
     db = get_db()
-    users = db.execute("SELECT id, username, role, nickname, created_at FROM users ORDER BY id").fetchall()
+    users = db.execute("""
+        SELECT id, username, role, nickname, created_at,
+               last_seen_at, last_seen_source, last_app_seen_at, last_web_seen_at
+        FROM users
+        ORDER BY id
+    """).fetchall()
     return render_template("admin.html", users=users)
 
 
@@ -575,7 +716,6 @@ def home():
                            site_counts=site_counts)
 
 
-@app.route("/app")
 @app.route("/app")
 @app.route("/download")
 def app_download():
