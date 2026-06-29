@@ -1,7 +1,7 @@
 {
-  "versionCode": 9,
+  "versionCode": 8,
   "versionName": "1.0.8",
-  "apkUrl": "https://raw.githubusercontent.com/YOUSA-CECE/yousa.ccwu.cc/master/static/yousa-android-v1.0.8.apk",
+  "apkUrl": "https://yousa.ccwu.cc/static/yousa-android-v1.0.8.apk",
   "apkSizeBytes": 35710,
-  "changelog": "验证新版常驻更新卡片：更新提示将持续显示，只有点击“下载并安装”或“暂不更新”后才会关闭。"
+  "changelog": "修复更新提示显示问题"
 }
