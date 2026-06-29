@@ -1046,12 +1046,12 @@ def cloud_preview(filepath):
 @app.route("/gallery/")
 @app.route("/gallery/<path:subpath>")
 def gallery(subpath=None):
-    """Gallery — browse images from the files directory."""
-    base = FILE_DIR.resolve()
+    """Gallery — browse images from the 图片 folder."""
+    base = BASE_DIR
     if subpath:
         target = (base / subpath).resolve()
     else:
-        target = base
+        target = GALLERY_UPLOAD_DIR
 
     if not str(target).startswith(str(base)):
         abort(403)
@@ -1105,12 +1105,13 @@ def gallery(subpath=None):
 
     return render_template("gallery.html", images=images, dirs=dirs,
                            current_path=current_path, breadcrumbs=breadcrumbs,
-                           upload_meta=metadata, is_admin=current_user.is_admin)
+                           upload_meta=metadata,
+                           is_admin=current_user.is_authenticated and current_user.is_admin)
 
 
 # ── Gallery Upload ─────────────────────────────────────────────────
 
-GALLERY_UPLOAD_DIR = CLOUD_DIR / "画廊上传"
+GALLERY_UPLOAD_DIR = BASE_DIR / "图片"
 GALLERY_UPLOAD_DIR.mkdir(exist_ok=True)
 
 
@@ -1148,7 +1149,7 @@ def gallery_upload():
 
     try:
         file.save(str(dest))
-        rel = str(dest.relative_to(FILE_DIR.resolve())).replace("\\", "/")
+        rel = str(dest.relative_to(BASE_DIR)).replace("\\", "/")
         db = get_db()
         db.execute(
             "INSERT INTO upload_meta (type, filepath, title, notes, uploaded_by) VALUES (?, ?, ?, ?, ?)",
