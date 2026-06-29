@@ -69,20 +69,26 @@
             <p class="page-desc" style="margin-top:0.3rem">浏览与上传照片</p>
         </div>
         {% if is_admin %}
-        <button class="form-btn" onclick="toggleUploadForm()">📤 上传照片</button>
+        <button class="form-btn form-btn-sm" onclick="toggleUploadForm()">📤 上传</button>
         {% endif %}
     </div>
 
     <!-- Upload form -->
     <div class="upload-form glass-panel" id="upload-form">
-        <label>选择图片</label>
-        <input type="file" id="upload-file" accept="image/png,image/jpeg,image/gif,image/webp">
+        <div style="border:2px dashed var(--border-dark);border-radius:var(--radius);padding:1.5rem;text-align:center;margin-bottom:0.8rem;cursor:pointer" id="drop-zone"
+             ondragover="event.preventDefault();this.style.borderColor='var(--accent)'"
+             ondragleave="this.style.borderColor='var(--border-dark)'"
+             ondrop="handleDrop(event)">
+            <p style="margin:0;color:var(--text-muted);font-size:0.85rem">📤 拖拽照片到此处，或点击选择</p>
+        </div>
+        <input type="file" id="upload-file" accept="image/png,image/jpeg,image/gif,image/webp" style="display:none"
+               onchange="uploadSelected()">
         <label>标题</label>
         <input type="text" id="upload-title" placeholder="照片标题（可选）">
         <label>备注</label>
         <textarea id="upload-notes" placeholder="添加备注描述…（可选）"></textarea>
-        <button class="form-btn" style="margin-top:0.8rem" onclick="uploadPhoto()">上传</button>
-        <div id="upload-status" style="margin-top:0.5rem;font-size:0.85rem;color:var(--text-muted)"></div>
+        <button class="form-btn form-btn-sm" style="margin-top:0.6rem" onclick="uploadPhoto()">上传</button>
+        <div id="upload-status" style="margin-top:0.4rem;font-size:0.82rem;color:var(--text-muted)"></div>
     </div>
 
     {% if current_path %}
@@ -210,6 +216,27 @@
 
 function toggleUploadForm() {
     document.getElementById('upload-form').classList.toggle('open');
+}
+
+// Make drop zone clickable
+document.getElementById('drop-zone').addEventListener('click', function() {
+    document.getElementById('upload-file').click();
+});
+
+function uploadSelected() {
+    uploadPhoto();
+}
+
+function handleDrop(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    var zone = document.getElementById('drop-zone');
+    zone.style.borderColor = 'var(--border-dark)';
+    var file = e.dataTransfer.files[0];
+    if (!file) return;
+    if (!file.type.match('image.*')) { alert('请拖入图片文件'); return; }
+    document.getElementById('upload-file').files = e.dataTransfer.files;
+    uploadPhoto();
 }
 
 function uploadPhoto() {
