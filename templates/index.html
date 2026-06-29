@@ -80,25 +80,10 @@
                 </div>
                 <div class="activity-stats">
                     <span>{{ site_counts.wiki }} 篇知识</span>
-                    <span>{{ site_counts.posts }} 篇日志</span>
                     <span>{{ site_counts.messages }} 条留言</span>
                 </div>
             </div>
             <div class="activity-grid">
-                <div class="activity-column">
-                    <div class="activity-column-title">最新日志</div>
-                    {% if latest_posts %}
-                        {% for post in latest_posts %}
-                        <a class="activity-item" href="/blog/{{ post.id }}">
-                            <strong>{{ post.title }}</strong>
-                            <span>{{ post.content[:80] }}{% if post.content|length > 80 %}...{% endif %}</span>
-                            <small>{{ post.created_at }}</small>
-                        </a>
-                        {% endfor %}
-                    {% else %}
-                        <p class="activity-empty">还没有日志。</p>
-                    {% endif %}
-                </div>
                 <div class="activity-column">
                     <div class="activity-column-title">知识库更新</div>
                     {% if latest_wiki %}
