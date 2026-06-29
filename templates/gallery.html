@@ -136,6 +136,8 @@
              data-size="{{ img.size_hr }}" data-date="{{ img.modified }}"
              data-title="{{ meta.get('title', '') }}"
              data-notes="{{ meta.get('notes', '') }}"
+             data-uploader="{{ meta.get('uploaded_by', '') }}"
+             data-uploadtime="{{ meta.get('created_at', '') }}"
              onclick="openLightbox({{ loop.index0 }})">
             <div style="position:relative">
                 <img src="/gallery/{{ img.path }}" alt="{{ img.name }}" loading="lazy">
@@ -149,6 +151,9 @@
                 <span class="notes">{{ meta.get('notes') }}</span>
                 {% endif %}
                 <span class="meta">{{ img.size_hr }} · {{ img.modified }}</span>
+                {% if meta.get('uploaded_by') %}
+                <span class="meta">👤 {{ meta.get('uploaded_by') }} · 🕐 {{ meta.get('created_at')[:16] }}</span>
+                {% endif %}
             </div>
         </div>
         {% endfor %}
@@ -208,7 +213,9 @@
             size: el.dataset.size,
             date: el.dataset.date,
             title: el.dataset.title,
-            notes: el.dataset.notes
+            notes: el.dataset.notes,
+            uploader: el.dataset.uploader,
+            uploadtime: el.dataset.uploadtime
         });
     });
 
@@ -228,6 +235,9 @@
         lbTitle.textContent = d.title || d.name;
         lbNotes.textContent = d.notes || '';
         lbMeta.textContent = d.size + ' · ' + d.date;
+        if (d.uploader) {
+            lbMeta.textContent += ' · 👤 ' + d.uploader + ' 🕐 ' + d.uploadtime.substring(0, 16);
+        }
         lbDownload.href = '/gallery/' + d.path;
         lbDownload.setAttribute('download', d.name);
         lb.classList.add('active');

@@ -950,9 +950,16 @@ def cloud_drive(subpath=None):
     # Load upload metadata from DB
     db = get_db()
     meta_rows = db.execute(
-        "SELECT filepath, title, notes FROM upload_meta WHERE type='cloud' ORDER BY created_at DESC"
+        "SELECT m.filepath, m.title, m.notes, m.created_at, u.nickname AS uploaded_by_name "
+        "FROM upload_meta m "
+        "LEFT JOIN users u ON m.uploaded_by = u.id "
+        "WHERE m.type='cloud' ORDER BY m.created_at DESC"
     ).fetchall()
-    upload_meta = {row["filepath"]: {"title": row["title"], "notes": row["notes"]} for row in meta_rows}
+    upload_meta = {row["filepath"]: {
+        "title": row["title"], "notes": row["notes"],
+        "uploaded_by": row["uploaded_by_name"] or "未知",
+        "created_at": row["created_at"]
+    } for row in meta_rows}
 
     current_path = subpath.replace("\\", "/") if subpath else ""
     parts = current_path.split("/") if current_path else []
@@ -1160,11 +1167,16 @@ def gallery(subpath=None):
     # Load upload metadata from DB (include visibility)
     db = get_db()
     meta_rows = db.execute(
-        "SELECT filepath, title, notes, visibility FROM upload_meta WHERE type='gallery' ORDER BY created_at DESC"
+        "SELECT m.filepath, m.title, m.notes, m.visibility, m.created_at, u.nickname AS uploaded_by_name "
+        "FROM upload_meta m "
+        "LEFT JOIN users u ON m.uploaded_by = u.id "
+        "WHERE m.type='gallery' ORDER BY m.created_at DESC"
     ).fetchall()
     metadata = {row["filepath"]: {
         "title": row["title"], "notes": row["notes"],
-        "visibility": row["visibility"] or "public"
+        "visibility": row["visibility"] or "public",
+        "uploaded_by": row["uploaded_by_name"] or "未知",
+        "created_at": row["created_at"]
     } for row in meta_rows}
     try:
         for entry in sorted(target.iterdir(), key=lambda p: (p.is_file(), p.name.lower())):

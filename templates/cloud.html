@@ -166,6 +166,9 @@
                 {% if meta.get('notes') %}
                 <span class="notes">{{ meta.get('notes') }}</span>
                 {% endif %}
+                {% if meta.get('uploaded_by') %}
+                <span class="notes">👤 {{ meta.get('uploaded_by') }} · 🕐 {{ meta.get('created_at')[:16] }}</span>
+                {% endif %}
             </div>
             {% if is_admin %}
             <span class="file-actions">
