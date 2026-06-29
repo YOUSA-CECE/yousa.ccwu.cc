@@ -87,6 +87,15 @@
         <input type="text" id="upload-title" placeholder="照片标题（可选）">
         <label>备注</label>
         <textarea id="upload-notes" placeholder="添加备注描述…（可选）"></textarea>
+        <label style="margin-top:0.5rem">谁可以看</label>
+        <div style="display:flex;gap:1rem;margin-top:0.2rem">
+            <label style="font-size:0.85rem;cursor:pointer;display:flex;align-items:center;gap:0.3rem">
+                <input type="radio" name="visibility" value="public" checked> 🌍 所有人
+            </label>
+            <label style="font-size:0.85rem;cursor:pointer;display:flex;align-items:center;gap:0.3rem">
+                <input type="radio" name="visibility" value="private"> 🔒 仅自己
+            </label>
+        </div>
         <button class="form-btn form-btn-sm" style="margin-top:0.6rem" onclick="uploadPhoto()">上传</button>
         <div id="upload-status" style="margin-top:0.4rem;font-size:0.82rem;color:var(--text-muted)"></div>
     </div>
@@ -122,7 +131,12 @@
              data-title="{{ meta.get('title', '') }}"
              data-notes="{{ meta.get('notes', '') }}"
              onclick="openLightbox({{ loop.index0 }})">
-            <img src="/gallery/{{ img.path }}" alt="{{ img.name }}" loading="lazy">
+            <div style="position:relative">
+                <img src="/gallery/{{ img.path }}" alt="{{ img.name }}" loading="lazy">
+                {% if meta.get('visibility') == 'private' %}
+                <span style="position:absolute;top:0.3rem;right:0.3rem;font-size:0.7rem;background:rgba(0,0,0,0.5);color:#fff;padding:0.1rem 0.3rem;border-radius:3px">🔒</span>
+                {% endif %}
+            </div>
             <div class="gallery-caption">
                 <span class="name">{{ meta.get('title') or img.name }}</span>
                 {% if meta.get('notes') %}
@@ -266,6 +280,7 @@ function uploadPhoto() {
     formData.append('file', file);
     formData.append('title', document.getElementById('upload-title').value.trim());
     formData.append('notes', document.getElementById('upload-notes').value.trim());
+    formData.append('visibility', document.querySelector('input[name=visibility]:checked').value);
 
     var status = document.getElementById('upload-status');
     status.textContent = '⏳ 上传中…';

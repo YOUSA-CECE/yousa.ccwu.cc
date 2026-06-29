@@ -146,6 +146,12 @@ def init_db():
         db.commit()
     except sqlite3.OperationalError:
         pass
+    # Add visibility to upload_meta
+    try:
+        db.execute("ALTER TABLE upload_meta ADD COLUMN visibility TEXT DEFAULT 'public'")
+        db.commit()
+    except sqlite3.OperationalError:
+        pass
     # Create default admin if no users exist
     cur = db.execute("SELECT COUNT(*) FROM users")
     if cur.fetchone()[0] == 0:
@@ -1082,20 +1088,28 @@ def gallery(subpath=None):
     image_exts = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp"}
     images = []
     dirs = []
-    # Load upload metadata from DB
+    # Load upload metadata from DB (include visibility)
     db = get_db()
     meta_rows = db.execute(
-        "SELECT filepath, title, notes FROM upload_meta WHERE type='gallery' ORDER BY created_at DESC"
+        "SELECT filepath, title, notes, visibility FROM upload_meta WHERE type='gallery' ORDER BY created_at DESC"
     ).fetchall()
-    metadata = {row["filepath"]: {"title": row["title"], "notes": row["notes"]} for row in meta_rows}
+    metadata = {row["filepath"]: {
+        "title": row["title"], "notes": row["notes"],
+        "visibility": row["visibility"] or "public"
+    } for row in meta_rows}
     try:
         for entry in sorted(target.iterdir(), key=lambda p: (p.is_file(), p.name.lower())):
             if entry.name.startswith("."):
                 continue
-            rel = str(entry.relative_to(base)).replace("\\", "/")
+            rel = str(entry.relative_to(base)).replace("\\\\", "/")
             if entry.is_dir():
                 dirs.append({"name": entry.name, "path": rel})
             elif entry.suffix.lower() in image_exts:
+                # Filter by visibility
+                meta = metadata.get(rel, {})
+                vis = meta.get("visibility", "public")
+                if vis == "private" and not (current_user.is_authenticated and current_user.is_admin):
+                    continue
                 stat = entry.stat()
                 images.append({
                     "name": entry.name,
@@ -1140,6 +1154,7 @@ def gallery_upload():
 
     title = request.form.get("title", "").strip()
     notes = request.form.get("notes", "").strip()
+    visibility = request.form.get("visibility", "public")
     ext = Path(file.filename).suffix.lower()
 
     if ext not in (".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp"):
@@ -1163,8 +1178,8 @@ def gallery_upload():
         rel = str(dest.relative_to(BASE_DIR)).replace("\\", "/")
         db = get_db()
         db.execute(
-            "INSERT INTO upload_meta (type, filepath, title, notes, uploaded_by) VALUES (?, ?, ?, ?, ?)",
-            ("gallery", rel, title or Path(dest).stem, notes, current_user.id)
+            "INSERT INTO upload_meta (type, filepath, title, notes, visibility, uploaded_by) VALUES (?, ?, ?, ?, ?, ?)",
+            ("gallery", rel, title or Path(dest).stem, notes, visibility, current_user.id)
         )
         db.commit()
         return jsonify({
