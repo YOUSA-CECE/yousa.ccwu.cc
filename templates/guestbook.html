@@ -28,18 +28,37 @@
     {% if messages %}
     <div class="msg-list">
         {% for msg in messages %}
-        <div class="glass-panel msg-item" style="padding:1rem 1.2rem;margin-bottom:0.8rem">
+        <div class="glass-panel msg-item" style="padding:1rem 1.2rem;margin-bottom:1rem">
             <div style="display:flex;justify-content:space-between;align-items:center">
                 <strong style="color:var(--accent)">{{ msg.author_name }}</strong>
                 <span style="color:var(--text-dim);font-size:0.8rem">{{ msg.created_at[:16] }}</span>
             </div>
             <p style="margin:0.5rem 0 0;line-height:1.6;white-space:pre-wrap">{{ msg.content }}</p>
-            {% if current_user.is_authenticated and (current_user.is_admin or current_user.id == msg.user_id) %}
-            <form method="post" action="/guestbook/{{ msg.id }}/delete"
-                  onsubmit="return confirm('确定删除这条留言？')" style="text-align:right;margin-top:0.4rem">
-                <button type="submit" class="btn-danger" style="font-size:0.72rem;padding:0.2rem 0.5rem">删除</button>
-            </form>
-            {% endif %}
+
+            {# ── 回复列表 ── #}
+            <div id="replies-{{ msg.id }}" class="replies" style="margin-top:0.6rem;padding-left:1rem;border-left:2px solid var(--border-dark)">
+                <div class="replies-list" id="replies-list-{{ msg.id }}"></div>
+            </div>
+
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:0.4rem">
+                <button class="reply-btn" style="background:none;border:none;color:var(--accent-2);font-size:0.78rem;cursor:pointer;padding:0"
+                        onclick="toggleReplyForm('{{ msg.id }}')">↩ 回复</button>
+                {% if current_user.is_authenticated and (current_user.is_admin or current_user.id == msg.user_id) %}
+                <form method="post" action="/guestbook/{{ msg.id }}/delete"
+                      onsubmit="return confirm('确定删除这条留言？')" style="margin:0">
+                    <button type="submit" class="btn-danger" style="font-size:0.72rem;padding:0.2rem 0.5rem">删除</button>
+                </form>
+                {% endif %}
+            </div>
+
+            {# ── 回复表单 ── #}
+            <div id="reply-form-{{ msg.id }}" class="reply-form" style="display:none;margin-top:0.6rem;padding-top:0.6rem;border-top:1px solid var(--border-dark)">
+                {% if not current_user.is_authenticated %}
+                <input type="text" id="reply-name-{{ msg.id }}" placeholder="昵称" style="width:100%;margin-bottom:0.4rem;padding:0.4rem 0.6rem;border:1px solid var(--border-dark);border-radius:var(--radius-sm);background:rgba(255,255,255,0.5);font-size:0.85rem;box-sizing:border-box">
+                {% endif %}
+                <textarea id="reply-text-{{ msg.id }}" rows="2" placeholder="回复…" style="width:100%;padding:0.4rem 0.6rem;border:1px solid var(--border-dark);border-radius:var(--radius-sm);background:rgba(255,255,255,0.5);font-size:0.85rem;resize:none;box-sizing:border-box;font-family:inherit"></textarea>
+                <button class="form-btn form-btn-sm" style="margin-top:0.3rem" onclick="postReply('{{ msg.id }}')">发送</button>
+            </div>
         </div>
         {% endfor %}
     </div>
@@ -49,4 +68,53 @@
     </div>
     {% endif %}
 </div>
+
+<script>
+// Load replies for all messages on page load
+document.addEventListener('DOMContentLoaded', function() {
+    {% for msg in messages %}
+    loadReplies('{{ msg.id }}');
+    {% endfor %}
+});
+
+function loadReplies(msgId) {
+    fetch('/api/comment/guestbook/' + encodeURIComponent(msgId))
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        var el = document.getElementById('replies-list-' + msgId);
+        if (!el) return;
+        if (!data.length) { el.innerHTML = ''; return; }
+        el.innerHTML = data.map(function(c) {
+            return '<div style="padding:0.35rem 0.5rem;margin-bottom:0.3rem;background:rgba(255,255,255,0.3);border-radius:4px;font-size:0.85rem">'
+                + '<strong style="font-size:0.78rem;color:var(--accent-2)">' + esc(c.author) + '</strong> '
+                + esc(c.content)
+                + ' <span style="color:var(--text-dim);font-size:0.72rem">' + c.time + '</span></div>';
+        }).join('');
+    });
+}
+
+function toggleReplyForm(msgId) {
+    var el = document.getElementById('reply-form-' + msgId);
+    el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+function esc(t) { return String(t).replace(/[&<>"]/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c];}); }
+
+function postReply(msgId) {
+    var text = document.getElementById('reply-text-' + msgId);
+    if (!text.value.trim()) return;
+    var fd = new FormData();
+    fd.append('content', text.value.trim());
+    var n = document.getElementById('reply-name-' + msgId);
+    if (n) fd.append('name', n.value.trim() || '游客');
+    fetch('/api/comment/guestbook/' + encodeURIComponent(msgId), {method:'POST', body:fd})
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+        if (d.status === 'ok') {
+            text.value = '';
+            loadReplies(msgId);
+        }
+    });
+}
+</script>
 {% endblock %}

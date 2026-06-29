@@ -24,5 +24,53 @@
         {{ html_content|safe }}
         {% endif %}
     </div>
+
+    <!-- Comments -->
+    <div class="glass-panel" style="padding:1.2rem 1.5rem;margin-top:1rem">
+        <h3 style="margin-bottom:0.8rem;font-size:1rem">💬 评论</h3>
+        <div id="comments-list" style="margin-bottom:0.8rem"></div>
+        <form id="comment-form" onsubmit="return postComment(event)" style="border-top:1px solid var(--border-dark);padding-top:0.8rem">
+            {% if not current_user.is_authenticated %}
+            <input type="text" id="comment-name" placeholder="昵称" style="width:100%;margin-bottom:0.4rem;padding:0.4rem 0.6rem;border:1px solid var(--border-dark);border-radius:var(--radius-sm);background:rgba(255,255,255,0.5);font-size:0.85rem;box-sizing:border-box">
+            {% endif %}
+            <textarea id="comment-text" rows="2" placeholder="写评论…" required style="width:100%;padding:0.4rem 0.6rem;border:1px solid var(--border-dark);border-radius:var(--radius-sm);background:rgba(255,255,255,0.5);font-size:0.85rem;resize:none;box-sizing:border-box;font-family:inherit"></textarea>
+            <button type="submit" class="form-btn form-btn-sm" style="margin-top:0.4rem">发送</button>
+        </form>
+    </div>
 </section>
+
+<script>
+var targetId = '{{ filepath }}';
+loadComments('cloud', targetId);
+
+function loadComments(type, id) {
+    fetch('/api/comment/' + type + '/' + encodeURIComponent(id))
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        var el = document.getElementById('comments-list');
+        if (!data.length) { el.innerHTML = '<p style="color:var(--text-muted);font-size:0.85rem">暂无评论</p>'; return; }
+        el.innerHTML = data.map(function(c) {
+            return '<div style="margin-bottom:0.5rem;padding:0.5rem 0.7rem;background:var(--panel-strong,rgba(255,255,255,0.76));border-radius:var(--radius-sm)">'
+                + '<div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:0.15rem">'
+                + '<strong>' + esc(c.author) + '</strong><span style="color:var(--text-dim)">' + c.time + '</span></div>'
+                + '<p style="margin:0;font-size:0.88rem">' + esc(c.content) + '</p></div>';
+        }).join('');
+    });
+}
+function esc(t) { return String(t).replace(/[&<>"]/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c];}); }
+function postComment(e) {
+    e.preventDefault();
+    var text = document.getElementById('comment-text');
+    if (!text.value.trim()) return;
+    var fd = new FormData();
+    fd.append('content', text.value.trim());
+    var n = document.getElementById('comment-name');
+    if (n) fd.append('name', n.value.trim() || '游客');
+    fetch('/api/comment/cloud/' + encodeURIComponent(targetId), {method:'POST', body:fd})
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+        if (d.status === 'ok') { text.value = ''; loadComments('cloud', targetId); }
+    });
+}
+</script>
 {% endblock %}

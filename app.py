@@ -135,6 +135,17 @@ def init_db():
         db.commit()
     except sqlite3.OperationalError:
         pass  # Column already exists
+    # Add target_type/target_id for generic commenting
+    try:
+        db.execute("ALTER TABLE messages ADD COLUMN target_type TEXT DEFAULT NULL")
+        db.commit()
+    except sqlite3.OperationalError:
+        pass
+    try:
+        db.execute("ALTER TABLE messages ADD COLUMN target_id TEXT DEFAULT NULL")
+        db.commit()
+    except sqlite3.OperationalError:
+        pass
     # Create default admin if no users exist
     cur = db.execute("SELECT COUNT(*) FROM users")
     if cur.fetchone()[0] == 0:
@@ -1484,6 +1495,46 @@ def blog_delete(post_id):
     db.commit()
     flash("日志已删除", "success")
     return redirect(url_for("blog_list"))
+
+
+# ── Generic Comment API ─────────────────────────────────────────────
+
+@app.route("/api/comment/<target_type>/<target_id>", methods=["GET", "POST"])
+def api_comment(target_type, target_id):
+    """Generic comment endpoint for any target (gallery, cloud, guestbook, blog)."""
+    if request.method == "POST":
+        content = request.form.get("content", "").strip()
+        if not content:
+            return jsonify({"error": "评论不能为空"}), 400
+
+        if current_user.is_authenticated:
+            author_name = current_user.nickname
+            user_id = current_user.id
+        else:
+            author_name = request.form.get("name", "游客").strip() or "游客"
+            user_id = None
+
+        db = get_db()
+        db.execute(
+            "INSERT INTO messages (author_name, content, user_id, target_type, target_id) VALUES (?, ?, ?, ?, ?)",
+            (author_name, content, user_id, target_type, target_id)
+        )
+        db.commit()
+        return jsonify({"status": "ok"})
+
+    # GET — return comments as JSON
+    db = get_db()
+    rows = db.execute(
+        "SELECT id, author_name, content, created_at FROM messages "
+        "WHERE target_type=? AND target_id=? ORDER BY created_at ASC",
+        (target_type, target_id)
+    ).fetchall()
+    return jsonify([{
+        "id": r["id"],
+        "author": r["author_name"],
+        "content": r["content"],
+        "time": r["created_at"][:16],
+    } for r in rows])
 
 
 # ── Guestbook Routes ─────────────────────────────────────────────────
