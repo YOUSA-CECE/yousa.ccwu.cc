@@ -7,8 +7,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.view.KeyEvent;
 import android.view.View;
-import android.view.WindowInsets;
-import android.view.WindowInsetsController;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
@@ -24,16 +22,18 @@ public class MainActivity extends Activity {
 
         // ── Status bar: match website background ──
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            getWindow().setStatusBarColor(Color.parseColor("#EEF3F8")); // var(--bg)
+            getWindow().setStatusBarColor(Color.parseColor("#EEF3F8"));
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            // Light icons on light background
             View decor = getWindow().getDecorView();
             decor.setSystemUiVisibility(decor.getSystemUiVisibility()
                 | View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
         }
 
         setContentView(R.layout.activity_main);
+
+        // ── Check for updates in background ──
+        checkForUpdate();
 
         webView = findViewById(R.id.webView);
 
@@ -50,7 +50,6 @@ public class MainActivity extends Activity {
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public void onPageFinished(WebView view, String url) {
-                // Pull-to-refresh via JavaScript swipe
                 view.loadUrl("javascript:(function(){"
                     + "var sY=0;"
                     + "document.addEventListener('touchstart',function(e){"
@@ -67,6 +66,29 @@ public class MainActivity extends Activity {
         } else {
             webView.loadUrl(APP_URL);
         }
+    }
+
+    private void checkForUpdate() {
+        UpdateChecker.check(this, new UpdateChecker.Callback() {
+            @Override
+            public void onResult(boolean hasUpdate, String versionName,
+                                  String apkUrl, String changelog) {
+                if (hasUpdate) {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            UpdateChecker.showUpdateDialog(
+                                MainActivity.this, versionName, apkUrl, changelog);
+                        }
+                    });
+                }
+            }
+
+            @Override
+            public void onError(String error) {
+                // Silently ignore update check failures
+            }
+        });
     }
 
     @Override
