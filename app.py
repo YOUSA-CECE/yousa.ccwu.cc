@@ -703,6 +703,37 @@ def change_role(user_id):
     return redirect(url_for("admin_panel"))
 
 
+@app.route("/admin/user/<int:user_id>/nickname", methods=["POST"])
+@admin_required
+def admin_update_nickname(user_id):
+    """Admin updates any user's nickname."""
+    nickname = request.form.get("nickname", "").strip()
+    if not nickname:
+        flash("昵称不能为空", "error")
+        return redirect(url_for("admin_panel"))
+    db = get_db()
+    db.execute("UPDATE users SET nickname = ? WHERE id = ?", (nickname, user_id))
+    db.commit()
+    flash(f"用户 #{user_id} 昵称已更新为「{nickname}」", "success")
+    return redirect(url_for("admin_panel"))
+
+
+@app.route("/admin/user/<int:user_id>/password", methods=["POST"])
+@admin_required
+def admin_reset_password(user_id):
+    """Admin resets any user's password."""
+    new_password = request.form.get("new_password", "")
+    if len(new_password) < 4:
+        flash("密码至少 4 位", "error")
+        return redirect(url_for("admin_panel"))
+    db = get_db()
+    db.execute("UPDATE users SET password = ? WHERE id = ?",
+               (generate_password_hash(new_password), user_id))
+    db.commit()
+    flash(f"用户 #{user_id} 密码已重置", "success")
+    return redirect(url_for("admin_panel"))
+
+
 @app.route("/profile")
 @login_required
 def profile():

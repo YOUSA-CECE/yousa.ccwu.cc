@@ -1,81 +1,128 @@
 {% extends "base.html" %}
 {% block title %}管理后台 — yousa.ccwu.cc{% endblock %}
+{% block head %}
+<style>
+.admin-wrap { max-width: 1100px; margin: 0 auto; }
+.admin-header { padding: 1.5rem 2rem; margin-bottom: 1.5rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; }
+.admin-section { padding: 1.5rem; margin-bottom: 1.5rem; }
+.inline-form { display: inline-flex; gap: 0.3rem; align-items: center; margin: 0; }
+.inline-form input { padding:0.25rem 0.4rem; font-size:0.82rem; border:1px solid var(--border-dark); border-radius:var(--radius-sm); width:100px; background:rgba(255,255,255,0.5); }
+.inline-form input.nick-input { width:90px; }
+.inline-form input.pw-input { width:80px; }
+.inline-form button { padding:0.2rem 0.5rem; font-size:0.75rem; white-space:nowrap; }
+.role-select { padding:0.2rem 0.3rem; font-size:0.78rem; border:1px solid var(--border-dark); border-radius:var(--radius-sm); background:rgba(255,255,255,0.5); }
+.admin-table { width:100%; border-collapse:collapse; font-size:0.85rem; }
+.admin-table th { text-align:left; padding:0.5rem 0.4rem; border-bottom:1px solid var(--border-dark); color:var(--text-muted); font-weight:500; white-space:nowrap; }
+.admin-table td { padding:0.4rem; border-bottom:1px solid var(--border-dark); vertical-align:middle; }
+.admin-table tr:hover { background:rgba(255,255,255,0.15); }
+.activity-time { font-size:0.78rem; color:var(--text-muted); display:block; }
+.source-badge { display:inline-block; font-size:0.65rem; padding:0.05rem 0.3rem; border-radius:3px; }
+.source-app { background:rgba(215,102,146,0.12); color:var(--accent); }
+.source-web { background:rgba(94,158,188,0.12); color:var(--accent-2); }
+.admin-actions { white-space:nowrap; }
+.text-muted { color:var(--text-muted); font-size:0.78rem; }
+.session-info p { margin:0.3rem 0; font-size:0.9rem; }
+@media(max-width:768px) {
+  .admin-table { font-size:0.75rem; }
+  .inline-form input { width:60px; }
+  .inline-form input.nick-input { width:60px; }
+}
+</style>
+{% endblock %}
 {% block content %}
-<div class="page-header">
-    <h1>管理后台</h1>
-    <a href="/register" class="form-btn form-btn-sm">+ 添加用户</a>
-</div>
-
-<div class="admin-section">
-    <h2 class="section-title">用户管理</h2>
-    <div class="admin-table-wrap">
-        <table class="admin-table admin-user-table">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>用户名</th>
-                    <th>昵称</th>
-                    <th>角色</th>
-                    <th>最后活动</th>
-                    <th>App 最近使用</th>
-                    <th>网页最近使用</th>
-                    <th>创建时间</th>
-                    <th>操作</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for user in users %}
-                <tr>
-                    <td>{{ user.id }}</td>
-                    <td>{{ user.username }}</td>
-                    <td>{{ user.nickname or '-' }}</td>
-                    <td>
-                        {% if user.role == 'admin' %}
-                        <span class="role-badge role-admin">管理员</span>
-                        {% else %}
-                        <span class="role-badge role-user">用户</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        <span class="activity-time">{{ user.last_seen_at|hk_time }}</span>
-                        {% if user.last_seen_source == 'app' %}
-                        <span class="source-badge source-app">App</span>
-                        {% elif user.last_seen_source == 'web' %}
-                        <span class="source-badge source-web">网页</span>
-                        {% endif %}
-                    </td>
-                    <td>{{ user.last_app_seen_at|hk_time }}</td>
-                    <td>{{ user.last_web_seen_at|hk_time }}</td>
-                    <td>{{ user.created_at[:10] if user.created_at else '-' }}</td>
-                    <td class="admin-actions">
-                        {% if user.id != current_user.id %}
-                        <form method="post" action="/admin/user/{{ user.id }}/role" class="inline-form">
-                            <select name="role" onchange="this.form.submit()" class="role-select">
-                                <option value="user" {% if user.role == 'user' %}selected{% endif %}>用户</option>
-                                <option value="admin" {% if user.role == 'admin' %}selected{% endif %}>管理员</option>
-                            </select>
-                        </form>
-                        <form method="post" action="/admin/user/{{ user.id }}/delete"
-                              onsubmit="return confirm('确定删除用户 {{ user.username }}？')" class="inline-form">
-                            <button type="submit" class="btn-danger">删除</button>
-                        </form>
-                        {% else %}
-                        <span class="text-muted">当前用户</span>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+<section class="admin-wrap">
+    <div class="admin-header glass-panel">
+        <div>
+            <h1>⚙️ 管理后台</h1>
+            <p class="page-desc" style="margin-top:0.2rem">用户管理 · 注册 · 权限</p>
+        </div>
+        <a href="/register" class="form-btn">+ 注册新用户</a>
     </div>
-</div>
 
-<div class="admin-section">
-    <h2 class="section-title">当前会话</h2>
-    <div class="session-info">
-        <p><strong>用户：</strong>{{ current_user.nickname }}（{{ current_user.username }}）</p>
-        <p><strong>角色：</strong>{% if current_user.is_admin %}管理员{% else %}普通用户{% endif %}</p>
-        <p><a href="/admin/password" class="form-btn form-btn-sm">修改密码</a></p>
+    <div class="admin-section glass-panel">
+        <h2 class="section-title" style="margin-bottom:0.8rem">用户管理</h2>
+        <div style="overflow-x:auto">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>用户名</th>
+                        <th>昵称</th>
+                        <th>角色</th>
+                        <th>最后活动</th>
+                        <th>App</th>
+                        <th>网页</th>
+                        <th>创建时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr>
+                        <td>{{ user.id }}</td>
+                        <td><strong>{{ user.username }}</strong></td>
+                        <td>
+                            <form method="post" action="/admin/user/{{ user.id }}/nickname" class="inline-form">
+                                <input type="text" name="nickname" value="{{ user.nickname or '' }}" class="nick-input" placeholder="昵称">
+                                <button type="submit" class="form-btn form-btn-sm">✔</button>
+                            </form>
+                        </td>
+                        <td>
+                            {% if user.id != current_user.id %}
+                            <form method="post" action="/admin/user/{{ user.id }}/role" class="inline-form">
+                                <select name="role" class="role-select">
+                                    <option value="user" {% if user.role == 'user' %}selected{% endif %}>用户</option>
+                                    <option value="admin" {% if user.role == 'admin' %}selected{% endif %}>管理员</option>
+                                </select>
+                                <button type="submit" class="form-btn form-btn-sm">✔</button>
+                            </form>
+                            {% else %}
+                            <span class="role-badge role-admin">管理员</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if user.last_seen_at %}
+                            <span class="activity-time">{{ user.last_seen_at|hk_time }}</span>
+                            {% if user.last_seen_source == 'app' %}
+                            <span class="source-badge source-app">App</span>
+                            {% elif user.last_seen_source == 'web' %}
+                            <span class="source-badge source-web">网页</span>
+                            {% endif %}
+                            {% else %}
+                            <span class="text-muted">从未</span>
+                            {% endif %}
+                        </td>
+                        <td><span class="activity-time">{{ user.last_app_seen_at|hk_time }}</span></td>
+                        <td><span class="activity-time">{{ user.last_web_seen_at|hk_time }}</span></td>
+                        <td>{{ user.created_at[:10] if user.created_at else '-' }}</td>
+                        <td class="admin-actions">
+                            {% if user.id != current_user.id %}
+                            <form method="post" action="/admin/user/{{ user.id }}/password" class="inline-form" onsubmit="return confirm('重置 {{ user.username }} 的密码？')">
+                                <input type="password" name="new_password" class="pw-input" placeholder="新密码" required>
+                                <button type="submit" class="form-btn form-btn-sm">🔑</button>
+                            </form>
+                            <form method="post" action="/admin/user/{{ user.id }}/delete" class="inline-form"
+                                  onsubmit="return confirm('确定删除用户 {{ user.username }}？')">
+                                <button type="submit" class="btn-danger" style="padding:0.2rem 0.4rem;font-size:0.75rem">删除</button>
+                            </form>
+                            {% else %}
+                            <span class="text-muted">当前用户</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
-</div>
+
+    <div class="admin-section glass-panel">
+        <h2 class="section-title" style="margin-bottom:0.5rem">当前会话</h2>
+        <div class="session-info">
+            <p><strong>用户：</strong>{{ current_user.nickname }}（{{ current_user.username }}）</p>
+            <p><strong>角色：</strong>{% if current_user.is_admin %}管理员{% else %}普通用户{% endif %}</p>
+            <p><a href="/admin/password" class="form-btn form-btn-sm">修改我的密码</a></p>
+        </div>
+    </div>
+</section>
 {% endblock %}
