@@ -555,6 +555,13 @@ def home():
                            site_counts=site_counts)
 
 
+@app.route("/app")
+@app.route("/download")
+def app_download():
+    return render_template("app_download.html")
+
+
+
 @app.route("/about")
 def about():
     return render_template("about.html")

@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}yousa 安卓 App{% endblock %}
+{% block content %}
+
+<section class="home-main" style="max-width:640px;margin:2rem auto;">
+    <div class="hero glass-panel" style="text-align:center;padding:3rem 2rem;">
+        <p class="hero-eyebrow">Yousa for Android</p>
+        <h2 class="hero-title" style="font-size:clamp(1.8rem,4vw,2.6rem);">安卓 App</h2>
+        <p class="hero-sub" style="margin-top:.75rem;">
+            WebView 壳，完整加载 yousa.ccwu.cc。<br>
+            支持下拉刷新、后退导航、自动更新。
+        </p>
+
+        <div style="margin:2rem auto;max-width:320px;">
+            <div class="glass-panel" style="padding:2rem;text-align:center;">
+                <div style="font-size:3.5rem;margin-bottom:.5rem;">📱</div>
+                <div style="font-size:.85rem;color:var(--text-muted);">v1.0.0 · 12KB</div>
+                <a href="/static/yousa-安卓App_v1.0.0.apk"
+                   class="btn-primary"
+                   style="margin-top:1rem;display:inline-flex;gap:.5rem;"
+                   download>
+                    ⬇ 下载 APK
+                </a>
+            </div>
+        </div>
+
+        <div style="text-align:left;max-width:420px;margin:0 auto;">
+            <h3 style="font-size:1rem;margin-bottom:.5rem;">📋 安装说明</h3>
+            <ol style="margin:0;padding-left:1.25rem;color:var(--text-muted);font-size:.9rem;line-height:1.8;">
+                <li>下载 APK 文件</li>
+                <li>在手机上打开文件管理器，找到下载的 APK</li>
+                <li>允许"未知来源应用安装"</li>
+                <li>安装完成，打开即可使用</li>
+            </ol>
+        </div>
+
+        <div style="margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border);font-size:.82rem;color:var(--text-dim);">
+            每次网站更新后，App 启动时会自动检查新版并提示更新。
+        </div>
+    </div>
+</section>
+
+{% endblock %}
