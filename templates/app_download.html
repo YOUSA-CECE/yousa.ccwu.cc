@@ -14,7 +14,7 @@
         <div style="margin:2rem auto;max-width:320px;">
             <div class="glass-panel" style="padding:2rem;text-align:center;">
                 <div style="font-size:3.5rem;margin-bottom:.5rem;">📱</div>
-                <div style="font-size:.85rem;color:var(--text-muted);">v1.0.0 · 12KB</div>
+                <div style="font-size:.85rem;color:var(--text-muted);" id="app-version">加载中...</div>
                 <a href="/static/yousa-安卓App_v1.0.0.apk"
                    class="btn-primary"
                    style="margin-top:1rem;display:inline-flex;gap:.5rem;"
@@ -39,5 +39,18 @@
         </div>
     </div>
 </section>
+
+<script>
+// 从 version.json 动态获取版本号
+fetch('/static/version.json')
+  .then(r => r.json())
+  .then(d => {
+    document.getElementById('app-version').textContent =
+      'v' + d.versionName + ' · ' + (d.apkUrl.endsWith('.apk') ? '12KB' : '');
+  })
+  .catch(() => {
+    document.getElementById('app-version').textContent = 'v1.0.0';
+  });
+</script>
 
 {% endblock %}
