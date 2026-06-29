@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Background circle -->
+    <path
+        android:fillColor="#1A1A2E"
+        android:pathData="M54,54m-40,0a40,40 0,1 1,80 0a40,40 0,1 1,-80 0" />
+    <!-- "Y" monogram -->
+    <path
+        android:fillColor="#00D4AA"
+        android:strokeWidth="0"
+        android:pathData="M34,38L48,54L48,70L60,70L60,54L74,38L60,38L54,46L48,38Z" />
+</vector>
