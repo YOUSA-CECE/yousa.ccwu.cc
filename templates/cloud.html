@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}云盘 — yousa.ccwu.cc{% endblock %}
+{% block head %}
+<style>
+.cloud-shell { max-width: 1000px; margin: 0 auto; }
+.cloud-header { padding: 1.5rem 2rem; margin-bottom: 1.5rem;
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
+.cloud-search { display: flex; align-items: center; gap: 0.5rem;
+  background: rgba(255,255,255,0.4); border: 1px solid var(--border); border-radius: 999px;
+  padding: 0.3rem 0.3rem 0.3rem 1rem; }
+.cloud-search input { border: none; background: transparent; padding: 0.4rem 0;
+  font-size: 0.9rem; outline: none; width: 160px; font-family: inherit; }
+.cloud-search input:focus { width: 220px; }
+.cloud-search button { background: var(--accent); color: #fff; border: none;
+  border-radius: 999px; padding: 0.35rem 0.9rem; font-size: 0.8rem; cursor: pointer; }
+.cloud-stats { display: flex; gap: 1.5rem; margin-bottom: 1.2rem; }
+.cloud-stat { font-size: 0.85rem; color: var(--text-muted); }
+.cloud-stat strong { color: var(--text); }
+.breadcrumb { padding: 0.6rem 1.2rem; margin-bottom: 1rem; border-radius: var(--radius-sm); font-size: 0.9rem; }
+.breadcrumb a { color: var(--accent-2); text-decoration: none; }
+.breadcrumb-sep { margin: 0 0.4rem; color: var(--text-dim); }
+.file-list { display: flex; flex-direction: column; gap: 0.3rem; }
+.file-item { display: flex; align-items: center; padding: 0.7rem 1rem; border-radius: var(--radius-sm);
+  transition: background 0.15s; text-decoration: none; color: var(--text); }
+.file-item:hover { background: rgba(255,255,255,0.4); }
+.file-icon { font-size: 1.1rem; margin-right: 0.8rem; flex-shrink: 0; width: 1.4rem; text-align: center; }
+.file-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.92rem; }
+.file-meta { display: flex; align-items: center; gap: 0.6rem; flex-shrink: 0; }
+.file-meta span { color: var(--text-dim); font-size: 0.78rem; }
+.file-sep { color: var(--border-dark); }
+.hidden { display: none !important; }
+.cloud-empty { text-align: center; padding: 3rem 1rem; color: var(--text-muted); }
+@media (max-width: 640px) {
+  .cloud-header { flex-direction: column; align-items: stretch; }
+  .cloud-search { width: 100%; }
+  .cloud-search input { flex: 1; }
+  .file-meta span:not(:first-child) { display: none; }
+}
+</style>
+{% endblock %}
+{% block content %}
+<section class="cloud-shell">
+    <div class="cloud-header glass-panel">
+        <div>
+            <h1>☁️ 云盘</h1>
+            <p class="page-desc" style="margin-top:0.2rem">文件管理与下载</p>
+        </div>
+        <div class="cloud-search">
+            <input type="search" id="cloud-filter" placeholder="筛选文件名…" oninput="filterFiles(this.value)">
+            <button onclick="document.getElementById('cloud-filter').value='';filterFiles('')">✕</button>
+        </div>
+    </div>
+
+    <div class="cloud-stats" style="padding:0 0.3rem">
+        <span class="cloud-stat">📁 <strong>{{ dirs|length }}</strong> 个文件夹</span>
+        <span class="cloud-stat">📄 <strong>{{ files|length }}</strong> 个文件</span>
+        {% if total_size %}
+        <span class="cloud-stat">💾 共 <strong>{{ total_size }}</strong></span>
+        {% endif %}
+    </div>
+
+    <nav class="breadcrumb glass-panel">
+        <a href="/cloud/">☁️ 云盘根目录</a>
+        {% for crumb in breadcrumbs %}
+        <span class="breadcrumb-sep">/</span>
+        <a href="/cloud/{{ crumb.path }}">{{ crumb.name }}</a>
+        {% endfor %}
+    </nav>
+
+    <div class="file-list" id="file-list">
+        {% if current_path %}
+        <a href="/cloud/{{ current_path.rsplit('/', 1)[0] if '/' in current_path else '' }}"
+           class="file-item" data-name="..">
+            <span class="file-icon">📂</span>
+            <span class="file-name">..</span>
+            <span class="file-meta"><span>返回上级</span></span>
+        </a>
+        {% endif %}
+
+        {% for d in dirs %}
+        <a href="/cloud/{{ d.path }}" class="file-item dir-item" data-name="{{ d.name }}">
+            <span class="file-icon">📁</span>
+            <span class="file-name">{{ d.name }}</span>
+            <span class="file-meta">
+                <span>文件夹</span>
+                <span class="file-sep">·</span>
+                <span>{{ d.modified }}</span>
+            </span>
+        </a>
+        {% endfor %}
+
+        {% for f in files %}
+        <a href="/files/{{ f.path }}" class="file-item file-item-file" data-name="{{ f.name }}" download>
+            <span class="file-icon">{{ f.icon }}</span>
+            <span class="file-name">{{ f.name }}</span>
+            <span class="file-meta">
+                <span>{{ f.size_hr }}</span>
+                <span class="file-sep">·</span>
+                <span>{{ f.modified }}</span>
+            </span>
+        </a>
+        {% endfor %}
+    </div>
+
+    {% if not dirs and not files %}
+    <div class="cloud-empty glass-panel">
+        <p>📭 暂无文件</p>
+    </div>
+    {% endif %}
+</section>
+
+<script>
+function filterFiles(query) {
+    query = query.trim().toLowerCase();
+    document.querySelectorAll('.file-item').forEach(function(el) {
+        var name = (el.dataset.name || '').toLowerCase();
+        if (!query || name.indexOf(query) !== -1) {
+            el.classList.remove('hidden');
+        } else {
+            el.classList.add('hidden');
+        }
+    });
+}
+</script>
+{% endblock %}

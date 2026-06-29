@@ -1,7 +1,7 @@
 {
-  "versionCode": 9,
-  "versionName": "1.0.9",
-  "apkUrl": "https://yousa.ccwu.cc/static/yousa-android-v1.0.9.apk",
-  "apkSizeBytes": 17053,
-  "changelog": "修复更新提示弹窗问题"
+  "versionCode": 10,
+  "versionName": "1.0.10",
+  "apkUrl": "https://yousa.ccwu.cc/static/yousa-android-v1.0.10.apk",
+  "apkSizeBytes": 17249,
+  "changelog": "画廊Lightbox预览+云盘独立界面"
 }

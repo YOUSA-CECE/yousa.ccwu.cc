@@ -804,11 +804,60 @@ def chat():
 
 @app.route("/cloud/")
 @app.route("/cloud/<path:subpath>")
+@login_required
 def cloud_drive(subpath=None):
-    """Cloud drive — redirects to file browser."""
+    """Cloud drive — file manager with search and filter."""
+    base = FILE_DIR.resolve()
     if subpath:
-        return redirect(url_for("file_browser", subpath=subpath))
-    return redirect(url_for("file_browser"))
+        target = (base / subpath).resolve()
+    else:
+        target = base
+
+    if not str(target).startswith(str(base)):
+        abort(403)
+    if not target.exists():
+        return render_template("cloud.html", dirs=[], files=[],
+                               current_path="", breadcrumbs=[],
+                               total_size="0 B")
+
+    entries = []
+    total_bytes = 0
+    try:
+        for entry in sorted(target.iterdir(), key=lambda p: (p.is_file(), p.name.lower())):
+            if entry.name.startswith("."):
+                continue
+            rel = str(entry.relative_to(base)).replace("\\", "/")
+            stat = entry.stat()
+            total_bytes += stat.st_size if entry.is_file() else 0
+            modified = datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M")
+            ext = entry.suffix.lower() if entry.is_file() else ""
+            icon = FILE_ICONS.get(ext, "📄")
+            entries.append({
+                "name": entry.name,
+                "path": rel,
+                "is_dir": entry.is_dir(),
+                "size": stat.st_size,
+                "size_hr": format_size(stat.st_size),
+                "modified": modified,
+                "icon": icon,
+            })
+    except PermissionError:
+        abort(403)
+
+    dirs = [e for e in entries if e["is_dir"]]
+    files = [e for e in entries if not e["is_dir"]]
+
+    current_path = subpath.replace("\\", "/") if subpath else ""
+    parts = current_path.split("/") if current_path else []
+    breadcrumbs = []
+    accum = ""
+    for p in parts:
+        accum = f"{accum}/{p}" if accum else p
+        breadcrumbs.append({"name": p, "path": accum})
+
+    return render_template("cloud.html", dirs=dirs, files=files,
+                           current_path=current_path, breadcrumbs=breadcrumbs,
+                           total_size=format_size(total_bytes))
 
 
 @app.route("/gallery/")
@@ -1078,6 +1127,21 @@ def format_size(size):
             return f"{size:.1f} {unit}"
         size /= 1024
     return f"{size:.1f} TB"
+
+FILE_ICONS = {
+    ".py": "🐍", ".js": "🟨", ".html": "🌐", ".css": "🎨",
+    ".json": "📋", ".xml": "📋", ".yaml": "📋", ".yml": "📋",
+    ".md": "📝", ".txt": "📄", ".doc": "📘", ".docx": "📘",
+    ".xls": "📊", ".xlsx": "📊", ".csv": "📊",
+    ".pdf": "📕", ".ppt": "📙", ".pptx": "📙",
+    ".png": "🖼️", ".jpg": "🖼️", ".jpeg": "🖼️", ".gif": "🖼️",
+    ".webp": "🖼️", ".svg": "🖼️", ".bmp": "🖼️",
+    ".mp3": "🎵", ".wav": "🎵", ".flac": "🎵",
+    ".mp4": "🎬", ".avi": "🎬", ".mkv": "🎬",
+    ".zip": "📦", ".rar": "📦", ".7z": "📦", ".tar": "📦", ".gz": "📦",
+    ".apk": "📱", ".exe": "⚙️", ".msi": "⚙️",
+    ".sh": "💻", ".bat": "💻", ".ps1": "💻",
+}
 
 
 # ── Blog Routes ──────────────────────────────────────────────────────

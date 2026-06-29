@@ -5,7 +5,7 @@
 .gallery-shell { max-width: 1100px; margin: 0 auto; }
 .gallery-header { padding: 1.5rem 2rem; margin-bottom: 1.5rem; }
 .gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1rem; }
-.gallery-item { overflow: hidden; border-radius: var(--radius); transition: transform 0.2s, box-shadow 0.2s; }
+.gallery-item { overflow: hidden; border-radius: var(--radius); transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; }
 .gallery-item:hover { transform: translateY(-3px); box-shadow: 0 8px 30px rgba(65,83,101,0.2); }
 .gallery-item img { width: 100%; height: 220px; object-fit: cover; display: block; }
 .gallery-caption { padding: 0.6rem 0.8rem; font-size: 0.85rem; }
@@ -17,9 +17,32 @@
 .breadcrumb { padding: 0.6rem 1.2rem; margin-bottom: 1rem; border-radius: var(--radius-sm); font-size: 0.9rem; }
 .breadcrumb a { color: var(--accent-2); }
 .breadcrumb-sep { margin: 0 0.4rem; color: var(--text-dim); }
+
+/* Lightbox */
+.lightbox { display: none; position: fixed; z-index: 9999; left:0; top:0; width:100%; height:100%;
+  background: rgba(0,0,0,0.88); backdrop-filter: blur(6px); justify-content:center; align-items:center; flex-direction:column; }
+.lightbox.active { display: flex; }
+.lightbox-img { max-width: 92vw; max-height: 82vh; object-fit: contain; border-radius: 4px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.5); }
+.lightbox-close { position: fixed; top: 1rem; right: 1.5rem; font-size: 2rem; color: #fff;
+  cursor: pointer; opacity: 0.7; transition: opacity 0.2s; background: none; border: none; z-index: 10000; }
+.lightbox-close:hover { opacity: 1; }
+.lightbox-nav { position: fixed; top: 50%; transform: translateY(-50%); font-size: 2.5rem;
+  color: #fff; cursor: pointer; opacity: 0.5; transition: opacity 0.2s; background: none; border: none;
+  padding: 0.5rem 1rem; z-index: 10000; }
+.lightbox-nav:hover { opacity: 1; }
+.lightbox-prev { left: 1rem; }
+.lightbox-next { right: 1rem; }
+.lightbox-info { position: fixed; bottom: 0; left: 0; right: 0; padding: 1rem 2rem;
+  background: linear-gradient(transparent, rgba(0,0,0,0.7)); display: flex; justify-content: space-between; align-items: center; }
+.lightbox-info span { color: #ddd; font-size: 0.85rem; }
+.lightbox-info a { color: #fff; background: rgba(255,255,255,0.15); padding: 0.3rem 0.8rem;
+  border-radius: 999px; text-decoration: none; font-size: 0.8rem; transition: background 0.2s; }
+.lightbox-info a:hover { background: rgba(255,255,255,0.25); }
 @media (max-width: 640px) {
   .gallery-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
   .gallery-item img { height: 150px; }
+  .lightbox-img { max-width: 98vw; max-height: 70vh; }
 }
 </style>
 {% endblock %}
@@ -50,22 +73,96 @@
     {% endif %}
 
     {% if images %}
-    <div class="gallery-grid">
+    <div class="gallery-grid" id="gallery-grid">
         {% for img in images %}
-        <a href="/gallery/{{ img.path }}" class="gallery-item glass-panel" target="_blank">
+        <div class="gallery-item glass-panel" data-index="{{ loop.index0 }}"
+             data-path="{{ img.path }}" data-name="{{ img.name }}"
+             data-size="{{ img.size_hr }}" data-date="{{ img.modified }}"
+             onclick="openLightbox({{ loop.index0 }})">
             <img src="/gallery/{{ img.path }}" alt="{{ img.name }}" loading="lazy">
             <div class="gallery-caption">
                 <span class="name">{{ img.name }}</span>
                 <span class="meta">{{ img.size_hr }} · {{ img.modified }}</span>
             </div>
-        </a>
+        </div>
         {% endfor %}
     </div>
     {% elif not dirs %}
     <div class="gallery-empty glass-panel">
         <p>📭 暂无图片</p>
-        <p style="font-size:0.85rem;color:var(--text-dim);margin-top:0.5rem">将图片放到 D:\\DeepSeek 目录下即可显示</p>
+        <p style="font-size:0.85rem;color:var(--text-dim);margin-top:0.5rem">将图片放到服务器目录下即可显示</p>
     </div>
     {% endif %}
 </section>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox" role="dialog" aria-label="图片预览">
+    <button class="lightbox-close" onclick="closeLightbox()" aria-label="关闭预览">✕</button>
+    <button class="lightbox-nav lightbox-prev" onclick="prevImage()" aria-label="上一张">‹</button>
+    <button class="lightbox-nav lightbox-next" onclick="nextImage()" aria-label="下一张">›</button>
+    <img class="lightbox-img" id="lightbox-img" src="" alt="">
+    <div class="lightbox-info">
+        <span id="lightbox-info-text"></span>
+        <a id="lightbox-download" href="#" download>⬇ 下载</a>
+    </div>
+</div>
+
+<script>
+(function() {
+    const items = document.querySelectorAll('#gallery-grid .gallery-item');
+    const galleryData = [];
+    items.forEach(function(el) {
+        galleryData.push({
+            path: el.dataset.path,
+            name: el.dataset.name,
+            size: el.dataset.size,
+            date: el.dataset.date
+        });
+    });
+
+    const lb = document.getElementById('lightbox');
+    const lbImg = document.getElementById('lightbox-img');
+    const lbInfo = document.getElementById('lightbox-info-text');
+    const lbDownload = document.getElementById('lightbox-download');
+    var currentIdx = -1;
+
+    window.openLightbox = function(idx) {
+        if (idx < 0 || idx >= galleryData.length) return;
+        currentIdx = idx;
+        var d = galleryData[idx];
+        lbImg.src = '/gallery/' + d.path;
+        lbInfo.textContent = d.name + ' · ' + d.size + ' · ' + d.date;
+        lbDownload.href = '/gallery/' + d.path;
+        lbDownload.setAttribute('download', d.name);
+        lb.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    };
+
+    window.closeLightbox = function() {
+        lb.classList.remove('active');
+        document.body.style.overflow = '';
+    };
+
+    window.prevImage = function() {
+        if (currentIdx > 0) openLightbox(currentIdx - 1);
+    };
+
+    window.nextImage = function() {
+        if (currentIdx < galleryData.length - 1) openLightbox(currentIdx + 1);
+    };
+
+    // Keyboard navigation
+    document.addEventListener('keydown', function(e) {
+        if (!lb.classList.contains('active')) return;
+        if (e.key === 'Escape') closeLightbox();
+        if (e.key === 'ArrowLeft') prevImage();
+        if (e.key === 'ArrowRight') nextImage();
+    });
+
+    // Click outside image to close
+    lb.addEventListener('click', function(e) {
+        if (e.target === lb) closeLightbox();
+    });
+})();
+</script>
 {% endblock %}
