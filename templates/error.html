@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}{{ code }} — yousa.dev{% endblock %}
+{% block content %}
+<div class="error-page">
+    <div class="error-code">{{ code }}</div>
+    <div class="error-message">{{ message }}</div>
+    <a href="/" class="form-btn">返回首页</a>
+</div>
+{% endblock %}

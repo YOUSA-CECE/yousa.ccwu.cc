@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block title %}yousa.ccwu.cc | 首页{% endblock %}
+{% block content %}
+<section class="home-shell">
+    <aside class="profile-card glass-panel">
+        <div class="profile-cover"></div>
+        <div class="profile-avatar">Y</div>
+        <p class="profile-kicker">Personal Space</p>
+        <h1 class="profile-name">Yousa</h1>
+        <p class="profile-bio">个人知识库、AI 工具箱和资料中转站。把正在学习、整理和创造的东西，都安放在这里。</p>
+        <div class="profile-stats">
+            <div>
+                <strong>Wiki</strong>
+                <span>知识整理</span>
+            </div>
+            <div>
+                <strong>AI</strong>
+                <span>随时对话</span>
+            </div>
+            <div>
+                <strong>Files</strong>
+                <span>资料下载</span>
+            </div>
+        </div>
+    </aside>
+
+    <div class="home-main">
+        <section class="hero glass-panel">
+            <p class="hero-eyebrow">Welcome to yousa.ccwu.cc</p>
+            <h2 class="hero-title">记录学习，也收纳灵感。</h2>
+            <p class="hero-sub">这里借鉴了 XHBlogs 的毛玻璃博客风格：更轻的背景、更柔和的卡片、更像一个可以长期更新的个人主页。</p>
+            <div class="hero-actions">
+                <a href="/wiki/" class="btn-primary">进入知识库</a>
+                <a href="/chat" class="btn-secondary">打开 AI 对话</a>
+            </div>
+        </section>
+
+        <section class="feature-grid">
+            <a href="/wiki/" class="feature-card glass-panel">
+                <span class="feature-index">01</span>
+                <h3>知识库</h3>
+                <p>课程笔记、复习资料、长期积累的学习内容，适合沉浸式阅读和检索。</p>
+                <span class="card-link">浏览知识库</span>
+            </a>
+
+            <a href="/chat" class="feature-card glass-panel">
+                <span class="feature-index">02</span>
+                <h3>AI 对话</h3>
+                <p>保留你原有的 AI 助手入口，用更统一的界面承载提问和思路整理。</p>
+                <span class="card-link">开始对话</span>
+            </a>
+
+            <a href="/files/" class="feature-card glass-panel">
+                <span class="feature-index">03</span>
+                <h3>文件服务</h3>
+                <p>作业、文档、复习资料和临时文件集中放置，访问路径更清晰。</p>
+                <span class="card-link">查看文件</span>
+            </a>
+        </section>
+
+        <section class="section activity-panel glass-panel">
+            <div class="activity-head">
+                <div>
+                    <p class="section-kicker">Updates</p>
+                    <h2 class="section-title">最新动态</h2>
+                </div>
+                <div class="activity-stats">
+                    <span>{{ site_counts.wiki }} 篇知识</span>
+                    <span>{{ site_counts.posts }} 篇日志</span>
+                    <span>{{ site_counts.messages }} 条留言</span>
+                </div>
+            </div>
+            <div class="activity-grid">
+                <div class="activity-column">
+                    <div class="activity-column-title">最新日志</div>
+                    {% if latest_posts %}
+                        {% for post in latest_posts %}
+                        <a class="activity-item" href="/blog/{{ post.id }}">
+                            <strong>{{ post.title }}</strong>
+                            <span>{{ post.content[:80] }}{% if post.content|length > 80 %}...{% endif %}</span>
+                            <small>{{ post.created_at }}</small>
+                        </a>
+                        {% endfor %}
+                    {% else %}
+                        <p class="activity-empty">还没有日志。</p>
+                    {% endif %}
+                </div>
+                <div class="activity-column">
+                    <div class="activity-column-title">知识库更新</div>
+                    {% if latest_wiki %}
+                        {% for item in latest_wiki %}
+                        <a class="activity-item" href="{{ item.url }}">
+                            <strong>{{ item.title }}</strong>
+                            <span>{{ item.excerpt or "打开阅读这篇知识库内容。" }}</span>
+                            <small>{{ item.updated_at }}</small>
+                        </a>
+                        {% endfor %}
+                    {% else %}
+                        <p class="activity-empty">知识库暂时为空。</p>
+                    {% endif %}
+                </div>
+                <div class="activity-column">
+                    <div class="activity-column-title">最近留言</div>
+                    {% if latest_messages %}
+                        {% for msg in latest_messages %}
+                        <a class="activity-item" href="/guestbook">
+                            <strong>{{ msg.author_name }}</strong>
+                            <span>{{ msg.content[:80] }}{% if msg.content|length > 80 %}...{% endif %}</span>
+                            <small>{{ msg.created_at }}</small>
+                        </a>
+                        {% endfor %}
+                    {% else %}
+                        <p class="activity-empty">还没有留言。</p>
+                    {% endif %}
+                </div>
+            </div>
+        </section>
+
+        <section class="section dashboard-panel glass-panel">
+            <div>
+                <p class="section-kicker">Toolbox</p>
+                <h2 class="section-title">AI 工具箱</h2>
+            </div>
+            <div class="tool-grid">
+                <div class="tool-item"><span class="tool-name">DeepSeek</span><span class="tool-tag">主力模型</span></div>
+                <div class="tool-item"><span class="tool-name">Claude</span><span class="tool-tag">写作推演</span></div>
+                <div class="tool-item"><span class="tool-name">Codex CLI</span><span class="tool-tag">编程协作</span></div>
+                <div class="tool-item"><span class="tool-name">ComfyUI</span><span class="tool-tag">图像生成</span></div>
+                <div class="tool-item"><span class="tool-name">Suno</span><span class="tool-tag">音乐灵感</span></div>
+                <div class="tool-item"><span class="tool-name">Hermes Agent</span><span class="tool-tag">自动化</span></div>
+            </div>
+        </section>
+    </div>
+</section>
+{% endblock %}

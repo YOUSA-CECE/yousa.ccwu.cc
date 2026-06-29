@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}搜索 — yousa.ccwu.cc{% endblock %}
+{% block content %}
+<section class="search-page">
+    <div class="page-header">
+        <div>
+            <h1>全站搜索</h1>
+            <p class="page-desc">搜索知识库、日志和留言。登录后还会搜索文件名。</p>
+        </div>
+    </div>
+
+    <form class="search-hero glass-panel" action="/search" method="get">
+        <input class="form-input" type="search" name="q" value="{{ query }}" placeholder="输入关键词">
+        <button class="form-btn form-btn-sm" type="submit">搜索</button>
+    </form>
+
+    {% if query %}
+        <div class="search-summary">关键词：<strong>{{ query }}</strong>，找到 {{ results|length }} 个结果。</div>
+        {% if results %}
+            <div class="search-list">
+                {% for item in results %}
+                <a class="search-card glass-panel" href="{{ item.url }}">
+                    <span class="search-type">{{ item.type }}</span>
+                    <strong>{{ item.title }}</strong>
+                    <p>{{ item.excerpt }}</p>
+                    <small>{{ item.meta }}</small>
+                </a>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-state glass-panel">没有找到匹配内容。</div>
+        {% endif %}
+    {% else %}
+        <div class="empty-state glass-panel">输入关键词后开始搜索。</div>
+    {% endif %}
+</section>
+{% endblock %}

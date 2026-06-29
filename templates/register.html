@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}注册用户 — yousa.dev{% endblock %}
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <h1 class="auth-title">📝 注册用户</h1>
+        <form method="post" class="auth-form">
+            <div class="form-group">
+                <label for="username">用户名</label>
+                <input type="text" id="username" name="username" required autofocus
+                       placeholder="输入用户名" class="form-input">
+            </div>
+            <div class="form-group">
+                <label for="nickname">昵称</label>
+                <input type="text" id="nickname" name="nickname"
+                       placeholder="显示名称（可选）" class="form-input">
+            </div>
+            <div class="form-group">
+                <label for="password">密码</label>
+                <input type="password" id="password" name="password" required
+                       placeholder="输入密码" class="form-input">
+            </div>
+            <div class="form-group">
+                <label for="role">角色</label>
+                <select id="role" name="role" class="form-input">
+                    <option value="user">普通用户</option>
+                    <option value="admin">管理员</option>
+                </select>
+            </div>
+            <button type="submit" class="form-btn">创建用户</button>
+        </form>
+        <a href="/admin" class="auth-back">← 返回管理后台</a>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}关于我 — yousa.ccwu.cc{% endblock %}
+{% block content %}
+<section class="about-shell">
+    <div class="about-hero glass-panel">
+        <p class="section-kicker">About</p>
+        <h1>Yousa</h1>
+        <p>这里是我的个人网页，用来整理学习资料、记录日志、保存灵感，也放一些常用 AI 工具和文件服务入口。</p>
+        <div class="about-actions">
+            <a href="/blog" class="btn-primary">看日志</a>
+            <a href="/guestbook" class="btn-secondary">给我留言</a>
+        </div>
+    </div>
+
+    <div class="about-grid">
+        <section class="glass-panel about-card">
+            <h2>我在做什么</h2>
+            <p>持续整理课程笔记、复习资料和项目记录，把零散内容变成可以检索、可以复用的知识库。</p>
+        </section>
+        <section class="glass-panel about-card">
+            <h2>常用工具</h2>
+            <p>DeepSeek、Claude、Codex CLI、ComfyUI、Suno 和一些自动化工具，主要用于学习、写作、编程和创作。</p>
+        </section>
+        <section class="glass-panel about-card">
+            <h2>这个网站</h2>
+            <p>基于 Flask 搭建，通过 Cloudflare Tunnel 公开访问。首页、日志、知识库、AI 对话和留言板会逐步完善。</p>
+        </section>
+    </div>
+</section>
+{% endblock %}

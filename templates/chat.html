@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}欢欢 — AI 对话{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>🐕 欢欢</h1>
+    <p class="page-desc">智能管家，聊天下载一条龙</p>
+</div>
+
+<div class="chat-container">
+    <div class="chat-messages" id="chat-messages">
+        <div class="msg msg-assistant">
+            <div class="msg-avatar">🐕</div>
+            <div class="msg-bubble">
+                汪汪！我是欢欢，这个网站的管家～有事尽管问我！汪
+            </div>
+        </div>
+    </div>
+    <div class="chat-input-area">
+        <textarea id="chat-input" rows="1" placeholder="和欢欢聊天..."
+                  onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage()}"></textarea>
+        <button id="chat-send" onclick="sendMessage()">发送</button>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const messagesEl = document.getElementById('chat-messages');
+const inputEl = document.getElementById('chat-input');
+const sendBtn = document.getElementById('chat-send');
+
+// 对话历史：[{role, content}, ...]
+let chatHistory = [];
+
+inputEl.addEventListener('input', function() {
+    this.style.height = 'auto';
+    this.style.height = Math.min(this.scrollHeight, 200) + 'px';
+});
+
+async function sendMessage() {
+    const text = inputEl.value.trim();
+    if (!text) return;
+
+    addMessage(text, 'user');
+    chatHistory.push({role: 'user', content: text});
+
+    inputEl.value = '';
+    inputEl.style.height = 'auto';
+    sendBtn.disabled = true;
+    sendBtn.textContent = '...';
+
+    const typingId = addTyping();
+
+    try {
+        const resp = await fetch('/chat/api', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                message: text,
+                history: chatHistory.slice(0, -1) // 不含刚发的这条
+            }),
+        });
+        const data = await resp.json();
+
+        removeTyping(typingId);
+
+        if (data.reply) {
+            addMessage(data.reply, 'assistant');
+            chatHistory.push({role: 'assistant', content: data.reply});
+            // 限制历史长度，避免 token 太多
+            if (chatHistory.length > 30) chatHistory = chatHistory.slice(-30);
+        } else if (data.error) {
+            addMessage('❌ ' + data.error, 'assistant');
+        }
+    } catch (err) {
+        removeTyping(typingId);
+        addMessage('❌ 网络错误，请重试', 'assistant');
+    }
+
+    sendBtn.disabled = false;
+    sendBtn.textContent = '发送';
+}
+
+function addMessage(text, role) {
+    const div = document.createElement('div');
+    div.className = `msg msg-${role}`;
+    div.innerHTML = `
+        <div class="msg-avatar">${role === 'user' ? '👤' : '🐕'}</div>
+        <div class="msg-bubble">${text.replace(/\n/g, '<br>')}</div>
+    `;
+    messagesEl.appendChild(div);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+    return div;
+}
+
+function addTyping() {
+    const div = document.createElement('div');
+    div.className = 'msg msg-assistant typing-indicator';
+    div.innerHTML = `
+        <div class="msg-avatar">🐕</div>
+        <div class="msg-bubble"><span class="typing-dots">● ● ●</span></div>
+    `;
+    messagesEl.appendChild(div);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+    return div;
+}
+
+function removeTyping(el) {
+    if (el && el.parentNode) el.remove();
+}
+</script>
+{% endblock %}

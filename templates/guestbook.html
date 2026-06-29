@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}留言板 — yousa.ccwu.cc{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>💬 留言板</h1>
+</div>
+
+<div class="guestbook-wrap" style="max-width:650px;margin:0 auto">
+    {# ── 留言表单 ── #}
+    <div class="glass-panel" style="padding:1.5rem;margin-bottom:2rem">
+        <form method="post">
+            {% if not current_user.is_authenticated %}
+            <div class="form-group">
+                <input type="text" name="name" placeholder="你的昵称"
+                       class="form-input" maxlength="20">
+            </div>
+            {% endif %}
+            <div class="form-group">
+                <textarea name="content" required placeholder="写下你想说的话…"
+                       class="form-input" style="min-height:80px;resize:vertical"
+                       maxlength="1000"></textarea>
+            </div>
+            <button type="submit" class="form-btn">发送留言</button>
+        </form>
+    </div>
+
+    {# ── 留言列表 ── #}
+    {% if messages %}
+    <div class="msg-list">
+        {% for msg in messages %}
+        <div class="glass-panel msg-item" style="padding:1rem 1.2rem;margin-bottom:0.8rem">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+                <strong style="color:var(--accent)">{{ msg.author_name }}</strong>
+                <span style="color:var(--text-dim);font-size:0.8rem">{{ msg.created_at[:16] }}</span>
+            </div>
+            <p style="margin:0.5rem 0 0;line-height:1.6;white-space:pre-wrap">{{ msg.content }}</p>
+            {% if current_user.is_authenticated and (current_user.is_admin or current_user.id == msg.user_id) %}
+            <form method="post" action="/guestbook/{{ msg.id }}/delete"
+                  onsubmit="return confirm('确定删除这条留言？')" style="text-align:right;margin-top:0.4rem">
+                <button type="submit" class="btn-danger" style="font-size:0.72rem;padding:0.2rem 0.5rem">删除</button>
+            </form>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state" style="padding:3rem;text-align:center;color:var(--text-dim)">
+        <p>还没有留言，来做第一个留言的人吧 ✨</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

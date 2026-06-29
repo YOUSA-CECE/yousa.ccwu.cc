@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}个人设置 — yousa.ccwu.cc{% endblock %}
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card" style="max-width:420px">
+        <h1 class="auth-title">👤 个人设置</h1>
+
+        {# ── 修改昵称 ── #}
+        <h3 style="color:#fff;font-size:0.95rem;margin:1.2rem 0 0.6rem">修改昵称</h3>
+        <form method="post" action="/profile/nickname" class="auth-form">
+            <div class="form-group">
+                <label>当前昵称</label>
+                <p style="color:var(--accent);font-size:0.9rem;padding:0.3rem 0">{{ current_user.nickname }}</p>
+            </div>
+            <div class="form-group">
+                <label for="nickname">新昵称</label>
+                <input type="text" id="nickname" name="nickname" required
+                       placeholder="{{ current_user.nickname }}" class="form-input">
+            </div>
+            <button type="submit" class="form-btn">更新昵称</button>
+        </form>
+
+        <hr style="border-color:var(--border);margin:1.5rem 0">
+
+        {# ── 修改密码 ── #}
+        <h3 style="color:#fff;font-size:0.95rem;margin:0 0 0.6rem">🔑 修改密码</h3>
+        <form method="post" action="/admin/password" class="auth-form">
+            <div class="form-group">
+                <input type="password" name="old_password" required
+                       placeholder="当前密码" class="form-input">
+            </div>
+            <div class="form-group">
+                <input type="password" name="new_password" required
+                       placeholder="新密码（至少4位）" class="form-input">
+            </div>
+            <div class="form-group">
+                <input type="password" name="confirm_password" required
+                       placeholder="确认新密码" class="form-input">
+            </div>
+            <button type="submit" class="form-btn">修改密码</button>
+        </form>
+
+        <a href="/" class="auth-back" style="margin-top:1.5rem">← 返回首页</a>
+    </div>
+</div>
+{% endblock %}

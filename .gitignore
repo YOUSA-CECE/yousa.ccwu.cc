@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+.apikey
+users.db
+*.exe
+cloudflared.exe
+run-site.ps1
+run-tunnel.ps1
+start.bat
+tunnel.bat
+deploy-local.sh
+tunnel.sh
+check_ns.py
+check_ns2.py
+cf_ns.py
+decode_cert.py
+.apikey

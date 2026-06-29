@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}{{ post.title }} — yousa.ccwu.cc{% endblock %}
+{% block content %}
+<article class="glass-panel" style="max-width:700px;margin:0 auto;padding:2rem">
+    <h1 style="color:#25303a;margin-bottom:0.3rem">{{ post.title }}</h1>
+    <div class="blog-meta" style="margin-bottom:1.5rem">
+        <span>{{ post.author_name }}</span>
+        <span class="blog-sep">·</span>
+        <span>{{ post.created_at[:16] }}</span>
+    </div>
+    <div class="markdown-body">
+        {{ html_content|safe }}
+    </div>
+    {% if current_user.is_authenticated and (current_user.is_admin or current_user.id == post.author_id) %}
+    <form method="post" action="/blog/{{ post.id }}/delete"
+          onsubmit="return confirm('确定删除这篇日志？')" style="margin-top:2rem;text-align:right">
+        <button type="submit" class="btn-danger">删除</button>
+    </form>
+    {% endif %}
+</article>
+<div style="text-align:center;margin-top:1.5rem">
+    <a href="/blog" class="form-btn form-btn-sm">← 返回日志列表</a>
+</div>
+{% endblock %}

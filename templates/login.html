@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}登录 — yousa.dev{% endblock %}
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <h1 class="auth-title">✦ 登录</h1>
+        <form method="post" class="auth-form">
+            <div class="form-group">
+                <label for="username">用户名</label>
+                <input type="text" id="username" name="username" required autofocus
+                       placeholder="输入用户名" class="form-input">
+            </div>
+            <div class="form-group">
+                <label for="password">密码</label>
+                <input type="password" id="password" name="password" required
+                       placeholder="输入密码" class="form-input">
+            </div>
+            <button type="submit" class="form-btn">登录</button>
+        </form>
+        <p class="auth-hint">游客可直接浏览首页与知识库</p>
+    </div>
+</div>
+{% endblock %}

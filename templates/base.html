@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}yousa.ccwu.cc{% endblock %}</title>
+    <link rel="stylesheet" href="/static/style.css?v=20260627-0043">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23222831'/%3E%3Ctext x='50' y='62' text-anchor='middle' font-size='46' fill='%23f7c8d8' font-family='Times New Roman, serif'%3EY%3C/text%3E%3C/svg%3E">
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <div class="site-backdrop" aria-hidden="true">
+        <span class="aurora aurora-one"></span>
+        <span class="aurora aurora-two"></span>
+        <span class="aurora aurora-three"></span>
+        <span class="grid-glow"></span>
+    </div>
+
+    <nav class="navbar">
+        <div class="nav-inner">
+            <a href="/" class="nav-brand">
+                <span class="brand-mark">Y</span>
+                <span class="brand-text">yousa.ccwu.cc</span>
+            </a>
+            <form class="mobile-top-search" action="/search" method="get">
+                <input type="search" name="q" value="{{ request.args.get('q', '') }}" placeholder="搜索" aria-label="全站搜索">
+            </form>
+            <div class="nav-links">
+                <a href="/" class="nav-link">首页</a>
+                <a href="/wiki/" class="nav-link">知识库</a>
+                <a href="/blog" class="nav-link">日志</a>
+                <a href="/about" class="nav-link">关于</a>
+                <a href="/chat" class="nav-link">AI 对话</a>
+                <a href="/files/" class="nav-link">文件</a>
+                <a href="/guestbook" class="nav-link">留言</a>
+                <form class="nav-search" action="/search" method="get">
+                    <input type="search" name="q" value="{{ request.args.get('q', '') }}" placeholder="搜索" aria-label="全站搜索">
+                </form>
+                {% if current_user.is_authenticated %}
+                    {% if current_user.is_admin %}
+                    <a href="/admin" class="nav-link nav-admin">管理</a>
+                    {% endif %}
+                    <span class="nav-user">{{ current_user.nickname }}</span>
+                    <a href="/profile" class="nav-link">设置</a>
+                    <a href="/logout" class="nav-link">退出</a>
+                {% else %}
+                    <a href="/login" class="nav-link nav-login">登录</a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="flash-messages">
+            {% for category, message in messages %}
+            <div class="flash flash-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+    </main>
+
+    <section class="dog-chat" id="dog-chat" aria-live="polite">
+        <button class="dog-chat-toggle" id="dog-chat-toggle" type="button" aria-label="打开像素小狗 AI 助手">
+            <span class="pixel-dog" aria-hidden="true">
+                <span class="dog-tail"></span>
+                <span class="dog-ear dog-ear-left"></span>
+                <span class="dog-ear dog-ear-right"></span>
+                <span class="dog-face">
+                    <span class="dog-patch"></span>
+                    <span class="dog-eye dog-eye-left"></span>
+                    <span class="dog-eye dog-eye-right"></span>
+                    <span class="dog-blush dog-blush-left"></span>
+                    <span class="dog-blush dog-blush-right"></span>
+                    <span class="dog-muzzle"></span>
+                    <span class="dog-nose"></span>
+                </span>
+            </span>
+        </button>
+        <div class="dog-chat-panel" id="dog-chat-panel" hidden>
+            <div class="dog-chat-head">
+                <div>
+                    <strong>像素小狗</strong>
+                    <span>AI 助手</span>
+                </div>
+                <button type="button" id="dog-chat-close" aria-label="关闭聊天">×</button>
+            </div>
+            <div class="dog-chat-messages" id="dog-chat-messages">
+                <div class="dog-msg dog-msg-assistant">
+                    <span class="dog-msg-avatar">Y</span>
+                    <p>汪！我是右下角的小狗助手，有事可以直接问我。</p>
+                </div>
+            </div>
+            <form class="dog-chat-form" id="dog-chat-form">
+                <textarea id="dog-chat-input" rows="1" placeholder="问小狗一点什么..."></textarea>
+                <button type="submit" id="dog-chat-send">发送</button>
+            </form>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <span>yousa.ccwu.cc</span>
+        <span class="footer-sep">/</span>
+        <span>Flask Personal Blog</span>
+        <span class="footer-sep">/</span>
+        <span id="footer-time"></span>
+    </footer>
+
+    <script>
+        function updateClock() {
+            const el = document.getElementById('footer-time');
+            if (el) el.textContent = new Date().toLocaleString('zh-CN');
+        }
+        updateClock();
+        setInterval(updateClock, 1000);
+
+        setTimeout(function() {
+            document.querySelectorAll('.flash').forEach(function(el) {
+                el.style.opacity = '0';
+                setTimeout(function() { el.remove(); }, 300);
+            });
+        }, 4000);
+
+        (function() {
+            const root = document.getElementById('dog-chat');
+            const toggle = document.getElementById('dog-chat-toggle');
+            const panel = document.getElementById('dog-chat-panel');
+            const closeBtn = document.getElementById('dog-chat-close');
+            const form = document.getElementById('dog-chat-form');
+            const input = document.getElementById('dog-chat-input');
+            const send = document.getElementById('dog-chat-send');
+            const messages = document.getElementById('dog-chat-messages');
+            if (!root || !toggle || !panel || !form || !input || !messages) return;
+
+            let dogHistory = [];
+
+            function setOpen(open) {
+                panel.hidden = !open;
+                root.classList.toggle('dog-chat-open', open);
+                toggle.setAttribute('aria-label', open ? '关闭像素小狗 AI 助手' : '打开像素小狗 AI 助手');
+                if (open) setTimeout(function() { input.focus(); }, 50);
+            }
+
+            function escapeHtml(text) {
+                return String(text).replace(/[&<>"']/g, function(ch) {
+                    return ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'})[ch];
+                });
+            }
+
+            function addDogMessage(text, role) {
+                const item = document.createElement('div');
+                item.className = 'dog-msg dog-msg-' + role;
+                item.innerHTML = '<span class="dog-msg-avatar">' + (role === 'user' ? '我' : 'Y') + '</span><p>' + escapeHtml(text).replace(/\n/g, '<br>') + '</p>';
+                messages.appendChild(item);
+                messages.scrollTop = messages.scrollHeight;
+                return item;
+            }
+
+            function addTyping() {
+                const item = document.createElement('div');
+                item.className = 'dog-msg dog-msg-assistant dog-typing';
+                item.innerHTML = '<span class="dog-msg-avatar">Y</span><p><span class="typing-dots">...</span></p>';
+                messages.appendChild(item);
+                messages.scrollTop = messages.scrollHeight;
+                return item;
+            }
+
+            toggle.addEventListener('click', function() {
+                setOpen(panel.hidden);
+            });
+            closeBtn.addEventListener('click', function() {
+                setOpen(false);
+            });
+            input.addEventListener('input', function() {
+                input.style.height = 'auto';
+                input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+            });
+            input.addEventListener('keydown', function(event) {
+                if (event.key === 'Enter' && !event.shiftKey) {
+                    event.preventDefault();
+                    form.requestSubmit();
+                }
+            });
+
+            form.addEventListener('submit', async function(event) {
+                event.preventDefault();
+                const text = input.value.trim();
+                if (!text || send.disabled) return;
+
+                addDogMessage(text, 'user');
+                dogHistory.push({role: 'user', content: text});
+                input.value = '';
+                input.style.height = 'auto';
+                send.disabled = true;
+                send.textContent = '...';
+                const typing = addTyping();
+
+                try {
+                    const resp = await fetch('/chat/api', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            message: text,
+                            history: dogHistory.slice(0, -1)
+                        })
+                    });
+                    const data = await resp.json();
+                    typing.remove();
+                    if (data.reply) {
+                        addDogMessage(data.reply, 'assistant');
+                        dogHistory.push({role: 'assistant', content: data.reply});
+                        if (dogHistory.length > 30) dogHistory = dogHistory.slice(-30);
+                    } else {
+                        addDogMessage(data.error || '小狗暂时没有回答。', 'assistant');
+                    }
+                } catch (error) {
+                    typing.remove();
+                    addDogMessage('网络有点不稳，稍后再试。', 'assistant');
+                } finally {
+                    send.disabled = false;
+                    send.textContent = '发送';
+                }
+            });
+        })();
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

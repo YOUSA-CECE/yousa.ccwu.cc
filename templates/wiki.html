@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}知识库 — yousa.dev{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>📚 知识库</h1>
+    <div class="wiki-search">
+        <input type="text" id="wiki-search-input" placeholder="搜索笔记..." />
+        <div id="wiki-search-results" class="search-results"></div>
+    </div>
+</div>
+
+<div class="wiki-layout">
+    <aside class="wiki-sidebar">
+        <h3 class="sidebar-title">目录</h3>
+        <ul class="wiki-tree">
+        {% for item in tree %}
+            <li class="tree-item">
+                {% if item.is_dir %}
+                <details {% if current_dir and current_dir.startswith(item.path) %}open{% endif %}>
+                    <summary class="tree-folder">📁 {{ item.name }}</summary>
+                    {% if item.children %}
+                    <ul class="tree-children">
+                        {% for child in item.children %}
+                        <li class="tree-item">
+                            {% if child.is_dir %}
+                            <details>
+                                <summary class="tree-folder">📁 {{ child.name }}</summary>
+                                {% if child.children %}
+                                <ul class="tree-children">
+                                    {% for sub in child.children %}
+                                    <li><a href="/wiki/{{ sub.path }}" class="tree-file {% if current_file == sub.path %}active{% endif %}">📄 {{ sub.name }}</a></li>
+                                    {% endfor %}
+                                </ul>
+                                {% endif %}
+                            </details>
+                            {% else %}
+                            <a href="/wiki/{{ child.path }}" class="tree-file {% if current_file == child.path %}active{% endif %}">📄 {{ child.name }}</a>
+                            {% endif %}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
+                </details>
+                {% else %}
+                <a href="/wiki/{{ item.path }}" class="tree-file {% if current_file == item.path %}active{% endif %}">📄 {{ item.name }}</a>
+                {% endif %}
+            </li>
+        {% endfor %}
+        </ul>
+    </aside>
+
+    <article class="wiki-content">
+        {% if page_content %}
+        <h2 class="wiki-page-title">{{ page_title }}</h2>
+        <div class="markdown-body">
+            {{ page_content|safe }}
+        </div>
+        {% else %}
+        <div class="wiki-empty">
+            <p>从左侧目录选择一个笔记开始阅读 📖</p>
+        </div>
+        {% endif %}
+    </article>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const searchInput = document.getElementById('wiki-search-input');
+const searchResults = document.getElementById('wiki-search-results');
+let searchTimeout = null;
+
+searchInput.addEventListener('input', function() {
+    clearTimeout(searchTimeout);
+    const q = this.value.trim();
+    if (q.length < 2) {
+        searchResults.classList.remove('visible');
+        return;
+    }
+    searchTimeout = setTimeout(() => {
+        fetch('/wiki/search?q=' + encodeURIComponent(q))
+            .then(r => r.json())
+            .then(data => {
+                searchResults.innerHTML = '';
+                if (data.results.length === 0) {
+                    searchResults.innerHTML = '<div class="search-empty">没有找到结果</div>';
+                } else {
+                    data.results.forEach(r => {
+                        const div = document.createElement('div');
+                        div.className = 'search-result-item';
+                        div.innerHTML = `
+                            <a href="/wiki/${r.path}" class="search-link">📄 ${r.name}</a>
+                            <div class="search-snippets">
+                                ${r.snippets.map(s => `<code>${s.substring(0, 100)}</code>`).join('')}
+                            </div>
+                        `;
+                        searchResults.appendChild(div);
+                    });
+                }
+                searchResults.classList.add('visible');
+            });
+    }, 300);
+});
+
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.wiki-search')) {
+        searchResults.classList.remove('visible');
+    }
+});
+</script>
+{% endblock %}
