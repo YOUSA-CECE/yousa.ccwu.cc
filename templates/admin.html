@@ -82,7 +82,7 @@
                         </td>
                         <td>
                             {% if user.last_seen_at %}
-                            <span class="activity-time">{{ user.last_seen_at|hk_time }}</span>
+                            <span class="activity-time">{{ user.last_seen_at[:10] }} {{ user.last_seen_at[11:16] }}</span>
                             {% if user.last_seen_source == 'app' %}
                             <span class="source-badge source-app">App</span>
                             {% elif user.last_seen_source == 'web' %}
@@ -92,8 +92,8 @@
                             <span class="text-muted">从未</span>
                             {% endif %}
                         </td>
-                        <td><span class="activity-time">{{ user.last_app_seen_at|hk_time }}</span></td>
-                        <td><span class="activity-time">{{ user.last_web_seen_at|hk_time }}</span></td>
+                        <td><span class="activity-time">{{ user.last_app_seen_at[:10] if user.last_app_seen_at else '暂无' }}</span></td>
+                        <td><span class="activity-time">{{ user.last_web_seen_at[:10] if user.last_web_seen_at else '暂无' }}</span></td>
                         <td>{{ user.created_at[:10] if user.created_at else '-' }}</td>
                         <td class="admin-actions">
                             {% if user.id != current_user.id %}
