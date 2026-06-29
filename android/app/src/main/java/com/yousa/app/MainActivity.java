@@ -14,6 +14,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.webkit.CookieManager;
 import android.webkit.DownloadListener;
+import android.webkit.JavascriptInterface;
 import android.webkit.RenderProcessGoneDetail;
 import android.webkit.URLUtil;
 import android.webkit.WebChromeClient;
@@ -38,10 +39,16 @@ public class MainActivity extends Activity {
     private View errorPanel;
     private TextView errorMessage;
     private TextView pullHint;
+    private View refreshIndicator;
+    private View refreshLogo;
+    private ProgressBar refreshSpinner;
     private float touchStartY;
     private boolean canPull;
     private boolean splashDismissed;
     private boolean blankPageRetryUsed;
+    private boolean refreshing;
+    private boolean authNavigationPending;
+    private int authWatchdogToken;
     private long splashStartedAt;
 
     @SuppressLint({"SetJavaScriptEnabled", "ClickableViewAccessibility"})
@@ -58,16 +65,19 @@ public class MainActivity extends Activity {
         errorPanel = findViewById(R.id.errorPanel);
         errorMessage = findViewById(R.id.errorMessage);
         pullHint = findViewById(R.id.pullHint);
+        refreshIndicator = findViewById(R.id.refreshIndicator);
+        refreshLogo = findViewById(R.id.refreshLogo);
+        refreshSpinner = findViewById(R.id.refreshSpinner);
+        refreshIndicator.setTranslationY(-100f);
+        refreshIndicator.setAlpha(0f);
         findViewById(R.id.retryButton).setOnClickListener(v -> retryCurrentPage());
 
         configureWebView();
         checkForUpdate();
 
-        if (savedInstanceState != null && webView.restoreState(savedInstanceState) != null) {
-            webView.postDelayed(this::dismissSplash, 450);
-        } else {
-            webView.loadUrl(APP_URL);
-        }
+        // Always enter through the public home page. Restoring an old protected URL
+        // can trigger duplicate login redirects after Android recreates the process.
+        webView.loadUrl(APP_URL);
     }
 
     private void configureSystemBars() {
@@ -103,6 +113,7 @@ public class MainActivity extends Activity {
         CookieManager cookieManager = CookieManager.getInstance();
         cookieManager.setAcceptCookie(true);
         cookieManager.setAcceptThirdPartyCookies(webView, true);
+        webView.addJavascriptInterface(new AuthBridge(), "YousaApp");
 
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
@@ -117,8 +128,9 @@ public class MainActivity extends Activity {
             public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
                 errorPanel.setVisibility(View.GONE);
                 view.animate().cancel();
-                view.setAlpha(0.82f);
-                view.setTranslationX(18f);
+                view.setAlpha(0.94f);
+                view.setTranslationX(0f);
+                if (isPath(url, "/logout")) beginAuthNavigation();
             }
 
             @Override
@@ -131,9 +143,15 @@ public class MainActivity extends Activity {
             @Override
             public void onPageFinished(WebView view, String url) {
                 CookieManager.getInstance().flush();
-                pullHint.setVisibility(View.GONE);
+                finishRefresh();
                 animatePageIn();
                 dismissSplash();
+                injectAuthHooks(view, url);
+                if (authNavigationPending && isHome(url)) {
+                    authNavigationPending = false;
+                    authWatchdogToken++;
+                    view.clearHistory();
+                }
                 detectBlankMainFrame(view, url);
             }
 
@@ -179,23 +197,28 @@ public class MainActivity extends Activity {
                     if (canPull && distance > 35f) {
                         pullHint.setText(distance >= REFRESH_DISTANCE
                             ? R.string.release_to_refresh : R.string.pull_to_refresh);
-                        pullHint.setVisibility(View.VISIBLE);
-                        pullHint.setTranslationY(Math.min(distance / 3f, 70f));
+                        float progress = Math.min(1f, distance / REFRESH_DISTANCE);
+                        refreshIndicator.setVisibility(View.VISIBLE);
+                        refreshIndicator.setAlpha(progress);
+                        refreshIndicator.setScaleX(0.82f + progress * 0.18f);
+                        refreshIndicator.setScaleY(0.82f + progress * 0.18f);
+                        refreshIndicator.setTranslationY(-80f + progress * 92f);
+                        refreshLogo.setRotation(distance * 1.35f);
                     }
                     break;
                 case MotionEvent.ACTION_UP:
                 case MotionEvent.ACTION_CANCEL:
                     float releasedDistance = event.getY() - touchStartY;
                     if (canPull && releasedDistance >= REFRESH_DISTANCE) {
+                        refreshing = true;
                         pullHint.setText(R.string.refreshing);
-                        pullHint.setTranslationY(0);
+                        refreshLogo.setVisibility(View.GONE);
+                        refreshSpinner.setVisibility(View.VISIBLE);
+                        refreshIndicator.animate().alpha(1f).translationY(12f)
+                            .scaleX(1f).scaleY(1f).setDuration(220).start();
                         webView.reload();
                     } else {
-                        pullHint.animate().alpha(0f).setDuration(160).withEndAction(() -> {
-                            pullHint.setVisibility(View.GONE);
-                            pullHint.setAlpha(1f);
-                            pullHint.setTranslationY(0);
-                        }).start();
+                        hideRefreshIndicator();
                     }
                     canPull = false;
                     break;
@@ -245,6 +268,81 @@ public class MainActivity extends Activity {
     private void animatePageIn() {
         webView.animate().cancel();
         webView.animate().alpha(1f).translationX(0f).setDuration(220).start();
+    }
+
+    private void finishRefresh() {
+        if (!refreshing) return;
+        refreshing = false;
+        refreshIndicator.postDelayed(this::hideRefreshIndicator, 320);
+    }
+
+    private void hideRefreshIndicator() {
+        refreshIndicator.animate().alpha(0f).translationY(-100f)
+            .scaleX(0.86f).scaleY(0.86f).setDuration(240).withEndAction(() -> {
+                refreshIndicator.setVisibility(View.INVISIBLE);
+                refreshLogo.setVisibility(View.VISIBLE);
+                refreshLogo.setRotation(0f);
+                refreshSpinner.setVisibility(View.GONE);
+                refreshIndicator.setScaleX(1f);
+                refreshIndicator.setScaleY(1f);
+            }).start();
+    }
+
+    private void injectAuthHooks(WebView view, String url) {
+        if (!APP_HOST.equalsIgnoreCase(Uri.parse(url).getHost())) return;
+        view.evaluateJavascript(
+            "(function(){"
+                + "if(window.__yousaAuthHooks)return;"
+                + "window.__yousaAuthHooks=true;"
+                + "document.addEventListener('submit',function(e){"
+                + "if(location.pathname==='/login'&&window.YousaApp)"
+                + "window.YousaApp.onAuthSubmit();},true);"
+                + "document.addEventListener('click',function(e){"
+                + "var a=e.target.closest&&e.target.closest('a');"
+                + "if(a&&new URL(a.href,location.href).pathname==='/logout'&&window.YousaApp)"
+                + "window.YousaApp.onAuthSubmit();},true);"
+                + "})();", null);
+    }
+
+    private void beginAuthNavigation() {
+        authNavigationPending = true;
+        final int token = ++authWatchdogToken;
+        webView.postDelayed(() -> {
+            if (authNavigationPending && token == authWatchdogToken) {
+                authNavigationPending = false;
+                webView.stopLoading();
+                errorPanel.setVisibility(View.GONE);
+                webView.loadUrl(APP_URL + "?app_auth_recover=" + System.currentTimeMillis());
+            }
+        }, 12000);
+    }
+
+    private boolean isHome(String url) {
+        try {
+            Uri uri = Uri.parse(url);
+            String path = uri.getPath();
+            return APP_HOST.equalsIgnoreCase(uri.getHost())
+                && (path == null || path.isEmpty() || "/".equals(path));
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private boolean isPath(String url, String expectedPath) {
+        try {
+            Uri uri = Uri.parse(url);
+            return APP_HOST.equalsIgnoreCase(uri.getHost())
+                && expectedPath.equals(uri.getPath());
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private final class AuthBridge {
+        @JavascriptInterface
+        public void onAuthSubmit() {
+            runOnUiThread(MainActivity.this::beginAuthNavigation);
+        }
     }
 
     private void dismissSplash() {
@@ -339,7 +437,6 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onSaveInstanceState(Bundle outState) {
-        webView.saveState(outState);
         super.onSaveInstanceState(outState);
     }
 

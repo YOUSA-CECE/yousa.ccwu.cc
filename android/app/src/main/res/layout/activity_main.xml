@@ -20,23 +20,52 @@
         android:progressTint="#D76692"
         android:visibility="gone" />
 
-    <TextView
-        android:id="@+id/pullHint"
+    <LinearLayout
+        android:id="@+id/refreshIndicator"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="top|center_horizontal"
         android:layout_marginTop="12dp"
-        android:background="#E6FFFFFF"
+        android:background="@drawable/refresh_indicator_background"
         android:elevation="5dp"
-        android:fontFamily="serif"
-        android:paddingLeft="16dp"
-        android:paddingTop="8dp"
-        android:paddingRight="16dp"
-        android:paddingBottom="8dp"
-        android:text="@string/pull_to_refresh"
-        android:textColor="#25303A"
-        android:textSize="14sp"
-        android:visibility="gone" />
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:paddingLeft="14dp"
+        android:paddingTop="9dp"
+        android:paddingRight="14dp"
+        android:paddingBottom="9dp"
+        android:visibility="invisible">
+
+        <TextView
+            android:id="@+id/refreshLogo"
+            android:layout_width="26dp"
+            android:layout_height="26dp"
+            android:background="@drawable/splash_logo_background"
+            android:fontFamily="serif"
+            android:gravity="center"
+            android:text="@string/splash_logo"
+            android:textColor="#F7C8D8"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+
+        <ProgressBar
+            android:id="@+id/refreshSpinner"
+            style="?android:attr/progressBarStyleSmall"
+            android:layout_width="26dp"
+            android:layout_height="26dp"
+            android:indeterminateTint="#D76692"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/pullHint"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="9dp"
+            android:fontFamily="serif"
+            android:text="@string/pull_to_refresh"
+            android:textColor="#25303A"
+            android:textSize="14sp" />
+    </LinearLayout>
 
     <LinearLayout
         android:id="@+id/errorPanel"

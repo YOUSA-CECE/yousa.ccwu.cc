@@ -38,7 +38,10 @@ app.secret_key = os.getenv("SECRET_KEY", "yousa-dev-secret-key-change-me")
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "login"
-login_manager.login_message = "请先登录"
+# The login page already explains that authentication is required. Disabling
+# Flask-Login's automatic flash avoids duplicate "请先登录" messages when a
+# WebView process restores or retries a protected URL.
+login_manager.login_message = None
 
 
 # ── Database ────────────────────────────────────────────────────────
@@ -155,6 +158,16 @@ def user_or_admin(f):
 @app.context_processor
 def inject_user():
     return dict(current_user=current_user)
+
+
+@app.after_request
+def disable_auth_page_cache(response):
+    """Prevent WebView from restoring stale login/logout responses."""
+    if request.path in ("/login", "/logout"):
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
 
 
 # ── Helpers ─────────────────────────────────────────────────────────
@@ -408,9 +421,9 @@ def login():
         row = db.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
         if row and check_password_hash(row["password"], password):
             user = User(row)
-            login_user(user)
+            login_user(user, remember=True)
             flash(f"欢迎回来，{user.nickname}！", "success")
-            return redirect(next_page)
+            return redirect(next_page, code=303)
         else:
             flash("用户名或密码错误", "error")
 
@@ -451,8 +464,7 @@ def register():
 @login_required
 def logout():
     logout_user()
-    flash("已退出登录", "info")
-    return redirect(url_for("home"))
+    return redirect(url_for("home"), code=303)
 
 
 # ── Admin Routes ────────────────────────────────────────────────────
