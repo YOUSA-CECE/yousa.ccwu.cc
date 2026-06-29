@@ -1,7 +1,7 @@
 {
-  "versionCode": 8,
-  "versionName": "1.0.7",
-  "apkUrl": "https://raw.githubusercontent.com/YOUSA-CECE/yousa.ccwu.cc/master/static/yousa-android-v1.0.7.apk",
-  "apkSizeBytes": 35714,
-  "changelog": "更新提示改为不会闪退的应用内常驻卡片；新增官网、CDN、GitHub 并行版本检测和安装状态恢复；管理员可查看用户最近通过 App 与网页使用的时间；一级安全页面加入私有缓存和后台预取，提升再次打开速度。"
+  "versionCode": 9,
+  "versionName": "1.0.8",
+  "apkUrl": "https://raw.githubusercontent.com/YOUSA-CECE/yousa.ccwu.cc/master/static/yousa-android-v1.0.8.apk",
+  "apkSizeBytes": 35710,
+  "changelog": "验证新版常驻更新卡片：更新提示将持续显示，只有点击“下载并安装”或“暂不更新”后才会关闭。"
 }
