@@ -881,8 +881,10 @@ def chat_api():
             messages.append({"role": h["role"], "content": h["content"]})
     messages.append({"role": "user", "content": user_msg})
 
-    # ── 文件感知：搜索用户提到的文件 ──
-    file_context = build_file_context(user_msg)
+    # ── 文件感知：仅管理员可用，禁止泄露给普通用户和游客 ──
+    file_context = ""
+    if current_user.is_authenticated and current_user.is_admin:
+        file_context = build_file_context(user_msg)
     if file_context:
         messages.append({
             "role": "system",
@@ -906,7 +908,7 @@ def chat_api():
             },
             method="POST",
         )
-        with urllib.request.urlopen(req, timeout=30) as resp:
+        with urllib.request.urlopen(req, timeout=60) as resp:
             result = json.loads(resp.read().decode("utf-8"))
         reply = result["choices"][0]["message"]["content"]
 

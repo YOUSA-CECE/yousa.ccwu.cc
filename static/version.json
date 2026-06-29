@@ -1,7 +1,7 @@
 {
-  "versionCode": 8,
-  "versionName": "1.0.8",
-  "apkUrl": "https://yousa.ccwu.cc/static/yousa-android-v1.0.8.apk",
-  "apkSizeBytes": 35710,
-  "changelog": "修复更新提示显示问题"
+  "versionCode": 9,
+  "versionName": "1.0.9",
+  "apkUrl": "https://yousa.ccwu.cc/static/yousa-android-v1.0.9.apk",
+  "apkSizeBytes": 17053,
+  "changelog": "修复更新提示弹窗问题"
 }
