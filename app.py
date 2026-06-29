@@ -28,9 +28,10 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 # ── Config ──────────────────────────────────────────────────────────
 BASE_DIR = Path(__file__).resolve().parent
 WIKI_DIR = BASE_DIR / "wiki"
-# 开发环境用 D:/DeepSeek，服务器上用项目下的 files/ 目录
-_FILE_DIR_CANDIDATE = Path("D:/DeepSeek")
-FILE_DIR = _FILE_DIR_CANDIDATE if _FILE_DIR_CANDIDATE.exists() else (BASE_DIR / "files")
+# 云盘目录：网站根目录下的 云盘/ 文件夹
+CLOUD_DIR = BASE_DIR / "云盘"
+CLOUD_DIR.mkdir(exist_ok=True)
+FILE_DIR = CLOUD_DIR
 DB_PATH = BASE_DIR / "users.db"
 TEMPLATES_DIR = BASE_DIR / "templates"
 STATIC_DIR = BASE_DIR / "static"
