@@ -1101,7 +1101,7 @@ def gallery(subpath=None):
         for entry in sorted(target.iterdir(), key=lambda p: (p.is_file(), p.name.lower())):
             if entry.name.startswith("."):
                 continue
-            rel = str(entry.relative_to(base)).replace("\\\\", "/")
+            rel = str(entry.relative_to(base)).replace("\\", "/")
             if entry.is_dir():
                 dirs.append({"name": entry.name, "path": rel})
             elif entry.suffix.lower() in image_exts:
