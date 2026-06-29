@@ -24,8 +24,21 @@ from flask_login import (
 )
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.middleware.proxy_fix import ProxyFix
-
-# ── Config ──────────────────────────────────────────────────────────
+from datetime import datetime, timezone
+try:
+    from zoneinfo import ZoneInfo
+except ImportError:
+    try:
+        from backports.zoneinfo import ZoneInfo
+    except ImportError:
+        import pytz
+        class ZoneInfo:
+            """Fallback ZoneInfo using pytz for Python < 3.9 without backports.zoneinfo."""
+            _cache = {}
+            def __new__(cls, key):
+                if key not in cls._cache:
+                    cls._cache[key] = pytz.timezone(key)
+                return cls._cache[key]
 BASE_DIR = Path(__file__).resolve().parent
 WIKI_DIR = BASE_DIR / "wiki"
 # 云盘目录：网站根目录下的 云盘/ 文件夹
