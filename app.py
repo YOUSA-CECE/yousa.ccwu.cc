@@ -24,7 +24,9 @@ from werkzeug.security import generate_password_hash, check_password_hash
 # ── Config ──────────────────────────────────────────────────────────
 BASE_DIR = Path(__file__).resolve().parent
 WIKI_DIR = BASE_DIR / "wiki"
-FILE_DIR = Path("D:/DeepSeek")
+# 开发环境用 D:/DeepSeek，服务器上用项目下的 files/ 目录
+_FILE_DIR_CANDIDATE = Path("D:/DeepSeek")
+FILE_DIR = _FILE_DIR_CANDIDATE if _FILE_DIR_CANDIDATE.exists() else (BASE_DIR / "files")
 DB_PATH = BASE_DIR / "users.db"
 TEMPLATES_DIR = BASE_DIR / "templates"
 STATIC_DIR = BASE_DIR / "static"
