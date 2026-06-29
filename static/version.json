@@ -2,6 +2,6 @@
   "versionCode": 12,
   "versionName": "1.1.0",
   "apkUrl": "https://raw.githubusercontent.com/YOUSA-CECE/yousa.ccwu.cc/master/static/yousa-android-v1.1.0.apk",
-  "apkSizeBytes": 38729,
-  "changelog": "独立更新页面解决更新提示闪退；新增系统下载与网页图片、文件选择上传；恢复原生下拉刷新手势；扩大安全页面缓存，并优化手机端聊天输入框和关闭按钮尺寸。"
+  "apkSizeBytes": 38757,
+  "changelog": "独立更新页面解决更新提示闪退；新增系统下载与网页图片、文件选择上传；恢复原生下拉刷新手势；扩大安全页面缓存，并优化手机端聊天输入框和关闭按钮尺寸。\n修复：评论区域移动端紧凑化；文件上传按钮兼容移动浏览器；下拉刷新拦截触摸事件修复。"
 }
