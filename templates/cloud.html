@@ -100,8 +100,16 @@
         <p>📤 拖拽文件到此处上传</p>
         <p style="font-size:0.8rem">或点击选择文件</p>
         <input type="file" id="file-input" multiple style="display:none"
-               onchange="uploadFiles(this.files)">
+               onchange="uploadSelected()">
         <button class="form-btn form-btn-sm" onclick="document.getElementById('file-input').click()">选择文件</button>
+        <div style="margin-top:0.8rem;text-align:left">
+            <label style="font-size:0.82rem;color:var(--text-muted)">标题（可选）</label>
+            <input type="text" id="upload-title" placeholder="文件标题"
+                   style="width:100%;padding:0.4rem 0.6rem;border:1px solid var(--border-dark);border-radius:var(--radius-sm);font-size:0.85rem;box-sizing:border-box;margin-top:0.2rem">
+            <label style="font-size:0.82rem;color:var(--text-muted);margin-top:0.4rem;display:block">备注（可选）</label>
+            <textarea id="upload-notes" placeholder="备注描述…" rows="2"
+                   style="width:100%;padding:0.4rem 0.6rem;border:1px solid var(--border-dark);border-radius:var(--radius-sm);font-size:0.85rem;box-sizing:border-box;margin-top:0.2rem;resize:vertical;font-family:inherit"></textarea>
+        </div>
         <div class="upload-result" id="upload-result"></div>
     </div>
 
@@ -141,14 +149,20 @@
         {% endfor %}
 
         {% for f in files %}
+        {% set meta = upload_meta.get(f.path, {}) %}
         <div class="file-item" data-name="{{ f.name }}">
             <span class="file-icon">{{ f.icon }}</span>
             <span class="file-name">
+                <div>
                 {% if f.name.endswith('.md') or f.name.endswith('.txt') or f.name.endswith('.py') or f.name.endswith('.js') or f.name.endswith('.html') or f.name.endswith('.css') or f.name.endswith('.json') or f.name.endswith('.sh') or f.name.endswith('.csv') %}
-                <a href="/cloud/preview/{{ f.path }}">{{ f.name }}</a>
+                <a href="/cloud/preview/{{ f.path }}">{{ meta.get('title') or f.name }}</a>
                 {% else %}
-                <a href="/files/{{ f.path }}" download>{{ f.name }}</a>
+                <a href="/files/{{ f.path }}" download>{{ meta.get('title') or f.name }}</a>
                 {% endif %}
+                {% if meta.get('notes') %}
+                <div style="font-size:0.73rem;color:var(--text-dim);margin-top:0.1rem">{{ meta.get('notes') }}</div>
+                {% endif %}
+                </div>
             </span>
             <span class="file-meta">
                 <span>{{ f.size_hr }}</span>
@@ -223,6 +237,10 @@ function toggleUpload() {
     });
 })();
 
+function uploadSelected() {
+    uploadFiles(document.getElementById('file-input').files);
+}
+
 function uploadFiles(files) {
     if (!files || !files.length) return;
     var formData = new FormData();
@@ -230,6 +248,8 @@ function uploadFiles(files) {
         formData.append('file', files[i]);
     }
     formData.append('path', currentPath);
+    formData.append('title', document.getElementById('upload-title').value.trim());
+    formData.append('notes', document.getElementById('upload-notes').value.trim());
     var resultDiv = document.getElementById('upload-result');
     resultDiv.innerHTML = '<div class="upload-result-item">⏳ 上传中…</div>';
     fetch('/cloud/upload', { method: 'POST', body: formData })
@@ -244,6 +264,8 @@ function uploadFiles(files) {
                     + '</div>';
             }).join('');
             toast(data.results.filter(function(r) { return r.status === '成功'; }).length + ' 个文件上传成功');
+            document.getElementById('upload-title').value = '';
+            document.getElementById('upload-notes').value = '';
             setTimeout(function(){ location.reload(); }, 1500);
         } else {
             resultDiv.innerHTML = '<div class="upload-result-item err">❌ ' + (data.error || '上传失败') + '</div>';

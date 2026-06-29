@@ -115,6 +115,19 @@ def init_db():
             FOREIGN KEY (user_id) REFERENCES users(id)
         )
     """)
+    # Upload metadata table (gallery + cloud drive)
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS upload_meta (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            type TEXT NOT NULL DEFAULT 'gallery',
+            filepath TEXT NOT NULL,
+            title TEXT DEFAULT '',
+            notes TEXT DEFAULT '',
+            uploaded_by INTEGER,
+            created_at TEXT DEFAULT (datetime('now')),
+            FOREIGN KEY (uploaded_by) REFERENCES users(id)
+        )
+    """)
     db.commit()
     # Add post_id to messages table for per-post comments (if not exists)
     try:
@@ -848,6 +861,13 @@ def cloud_drive(subpath=None):
     dirs = [e for e in entries if e["is_dir"]]
     files = [e for e in entries if not e["is_dir"]]
 
+    # Load upload metadata from DB
+    db = get_db()
+    meta_rows = db.execute(
+        "SELECT filepath, title, notes FROM upload_meta WHERE type='cloud' ORDER BY created_at DESC"
+    ).fetchall()
+    upload_meta = {row["filepath"]: {"title": row["title"], "notes": row["notes"]} for row in meta_rows}
+
     current_path = subpath.replace("\\", "/") if subpath else ""
     parts = current_path.split("/") if current_path else []
     breadcrumbs = []
@@ -859,7 +879,8 @@ def cloud_drive(subpath=None):
     return render_template("cloud.html", dirs=dirs, files=files,
                            current_path=current_path, breadcrumbs=breadcrumbs,
                            total_size=format_size(total_bytes),
-                           is_admin=current_user.is_admin)
+                           is_admin=current_user.is_admin,
+                           upload_meta=upload_meta)
 
 
 # ── Cloud Drive: Upload / Delete / Mkdir ────────────────────────────────
@@ -895,6 +916,8 @@ def cloud_upload():
         return jsonify({"error": "未选择文件"}), 400
 
     uploaded = request.files.getlist("file")
+    title = request.form.get("title", "").strip()
+    notes = request.form.get("notes", "").strip()
     results = []
     for f in uploaded:
         if not f.filename:
@@ -906,6 +929,15 @@ def cloud_upload():
         dest = target / f.filename
         try:
             f.save(str(dest))
+            # Save metadata
+            rel = str(dest.relative_to(base)).replace("\\", "/")
+            if title or notes:
+                db = get_db()
+                db.execute(
+                    "INSERT INTO upload_meta (type, filepath, title, notes, uploaded_by) VALUES (?, ?, ?, ?, ?)",
+                    ("cloud", rel, title, notes, current_user.id)
+                )
+                db.commit()
             results.append({"name": f.filename, "status": "成功", "size": format_size(dest.stat().st_size)})
         except Exception as e:
             results.append({"name": f.filename, "status": "失败", "reason": str(e)})
@@ -1039,6 +1071,12 @@ def gallery(subpath=None):
     image_exts = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp"}
     images = []
     dirs = []
+    # Load upload metadata from DB
+    db = get_db()
+    meta_rows = db.execute(
+        "SELECT filepath, title, notes FROM upload_meta WHERE type='gallery' ORDER BY created_at DESC"
+    ).fetchall()
+    metadata = {row["filepath"]: {"title": row["title"], "notes": row["notes"]} for row in meta_rows}
     try:
         for entry in sorted(target.iterdir(), key=lambda p: (p.is_file(), p.name.lower())):
             if entry.name.startswith("."):
@@ -1066,7 +1104,65 @@ def gallery(subpath=None):
         breadcrumbs.append({"name": p, "path": accum})
 
     return render_template("gallery.html", images=images, dirs=dirs,
-                           current_path=current_path, breadcrumbs=breadcrumbs)
+                           current_path=current_path, breadcrumbs=breadcrumbs,
+                           upload_meta=metadata, is_admin=current_user.is_admin)
+
+
+# ── Gallery Upload ─────────────────────────────────────────────────
+
+GALLERY_UPLOAD_DIR = CLOUD_DIR / "画廊上传"
+GALLERY_UPLOAD_DIR.mkdir(exist_ok=True)
+
+
+@app.route("/gallery/upload", methods=["POST"])
+@login_required
+@admin_required
+def gallery_upload():
+    """Upload images to gallery with title and notes."""
+    if "file" not in request.files:
+        return jsonify({"error": "未选择文件"}), 400
+
+    file = request.files["file"]
+    if not file.filename:
+        return jsonify({"error": "文件名为空"}), 400
+
+    title = request.form.get("title", "").strip()
+    notes = request.form.get("notes", "").strip()
+    ext = Path(file.filename).suffix.lower()
+
+    if ext not in (".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp"):
+        return jsonify({"error": f"不支持的图片格式: {ext}"}), 400
+
+    # Save file with title-based name if provided, sanitized
+    safe_name = file.filename
+    if title:
+        safe_name = re.sub(r'[^\w\u4e00-\u9fff\-_\. ]', '', title)[:50] + ext
+    dest = GALLERY_UPLOAD_DIR / safe_name
+
+    # Avoid overwriting
+    counter = 1
+    while dest.exists():
+        stem = dest.stem
+        dest = GALLERY_UPLOAD_DIR / f"{stem}_{counter}{ext}"
+        counter += 1
+
+    try:
+        file.save(str(dest))
+        rel = str(dest.relative_to(FILE_DIR.resolve())).replace("\\", "/")
+        db = get_db()
+        db.execute(
+            "INSERT INTO upload_meta (type, filepath, title, notes, uploaded_by) VALUES (?, ?, ?, ?, ?)",
+            ("gallery", rel, title or Path(dest).stem, notes, current_user.id)
+        )
+        db.commit()
+        return jsonify({
+            "status": "ok",
+            "name": dest.name,
+            "path": rel,
+            "title": title or dest.stem,
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/chat/api", methods=["POST"])
@@ -1498,3 +1594,6 @@ if __name__ == "__main__":
 
     debug = os.getenv("FLASK_DEBUG", "0") == "1"
     app.run(host="0.0.0.0", port=port, debug=debug, use_reloader=False)
+
+# Ensure tables exist when imported by WSGI
+init_db()
