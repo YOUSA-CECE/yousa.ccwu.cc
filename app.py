@@ -20,6 +20,7 @@ from flask_login import (
     login_required, current_user
 )
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 # ── Config ──────────────────────────────────────────────────────────
 BASE_DIR = Path(__file__).resolve().parent
@@ -33,6 +34,7 @@ STATIC_DIR = BASE_DIR / "static"
 
 app = Flask(__name__, template_folder=str(TEMPLATES_DIR),
             static_folder=str(STATIC_DIR), static_url_path="/static")
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 app.secret_key = os.getenv("SECRET_KEY", "yousa-dev-secret-key-change-me")
 
 login_manager = LoginManager()
@@ -423,7 +425,11 @@ def login():
             user = User(row)
             login_user(user, remember=True)
             flash(f"欢迎回来，{user.nickname}！", "success")
-            return redirect(next_page, code=303)
+            # Authentication must never send the Android WebView back to HTTP.
+            # The app is served behind an HTTPS reverse proxy.
+            if not next_page.startswith("/") or next_page.startswith("//"):
+                next_page = url_for("home")
+            return redirect("https://yousa.ccwu.cc" + next_page, code=303)
         else:
             flash("用户名或密码错误", "error")
 
@@ -464,7 +470,7 @@ def register():
 @login_required
 def logout():
     logout_user()
-    return redirect(url_for("home"), code=303)
+    return redirect("https://yousa.ccwu.cc/", code=303)
 
 
 # ── Admin Routes ────────────────────────────────────────────────────

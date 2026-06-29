@@ -1,7 +1,7 @@
 {
-  "versionCode": 4,
-  "versionName": "1.0.3",
-  "apkUrl": "https://yousa.ccwu.cc/static/yousa-android-v1.0.3.apk",
-  "apkSizeBytes": 30017,
-  "changelog": "彻底重置登录与退出后的 WebView 导航状态，增加认证跳转超时恢复并移除重复登录提示；下拉刷新升级为带旋转标识、进度动画和弹性收放的原生交互。"
+  "versionCode": 5,
+  "versionName": "1.0.4",
+  "apkUrl": "https://yousa.ccwu.cc/static/yousa-android-v1.0.4.apk",
+  "apkSizeBytes": 30473,
+  "changelog": "修复登录和退出后服务器跳转到 HTTP，导致 Android 报 ERR_CLEARTEXT_NOT_PERMITTED 的问题；本站明文链接会自动安全升级为 HTTPS。"
 }

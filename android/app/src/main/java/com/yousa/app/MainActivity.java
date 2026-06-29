@@ -126,6 +126,7 @@ public class MainActivity extends Activity {
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
+                if (upgradeAppUrlToHttps(view, Uri.parse(url))) return;
                 errorPanel.setVisibility(View.GONE);
                 view.animate().cancel();
                 view.setAlpha(0.94f);
@@ -159,12 +160,14 @@ public class MainActivity extends Activity {
             public void onReceivedError(WebView view, WebResourceRequest request,
                                         WebResourceError error) {
                 if (request.isForMainFrame()) {
+                    if (upgradeAppUrlToHttps(view, request.getUrl())) return;
                     showLoadError(error == null ? null : error.getDescription().toString());
                 }
             }
 
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                if (upgradeAppUrlToHttps(view, request.getUrl())) return true;
                 return openExternalIfNeeded(request.getUrl());
             }
 
@@ -243,6 +246,21 @@ public class MainActivity extends Activity {
         } catch (Exception e) {
             Toast.makeText(this, "无法打开该链接", Toast.LENGTH_SHORT).show();
         }
+        return true;
+    }
+
+    private boolean upgradeAppUrlToHttps(WebView view, Uri uri) {
+        if (uri == null
+            || !"http".equalsIgnoreCase(uri.getScheme())
+            || !APP_HOST.equalsIgnoreCase(uri.getHost())) {
+            return false;
+        }
+        Uri secureUri = uri.buildUpon()
+            .scheme("https")
+            .authority(APP_HOST)
+            .build();
+        view.stopLoading();
+        view.post(() -> view.loadUrl(secureUri.toString()));
         return true;
     }
 
