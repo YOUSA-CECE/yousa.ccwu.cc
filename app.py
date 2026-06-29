@@ -31,13 +31,14 @@ except ImportError:
     try:
         from backports.zoneinfo import ZoneInfo
     except ImportError:
-        import pytz
+        from datetime import timezone, timedelta
+        _HK_TZ = timezone(timedelta(hours=8))
         class ZoneInfo:
-            """Fallback ZoneInfo using pytz for Python < 3.9 without backports.zoneinfo."""
+            """Fallback ZoneInfo for Python < 3.9. Uses fixed UTC+8 (China has no DST)."""
             _cache = {}
             def __new__(cls, key):
                 if key not in cls._cache:
-                    cls._cache[key] = pytz.timezone(key)
+                    cls._cache[key] = _HK_TZ
                 return cls._cache[key]
 BASE_DIR = Path(__file__).resolve().parent
 WIKI_DIR = BASE_DIR / "wiki"
