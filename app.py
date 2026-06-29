@@ -621,12 +621,22 @@ def logout():
 @admin_required
 def admin_panel():
     db = get_db()
-    users = db.execute("""
-        SELECT id, username, role, nickname, created_at,
-               last_seen_at, last_seen_source, last_app_seen_at, last_web_seen_at
-        FROM users
-        ORDER BY id
-    """).fetchall()
+    try:
+        users = db.execute("""
+            SELECT id, username, role, nickname, created_at,
+                   last_seen_at, last_seen_source, last_app_seen_at, last_web_seen_at
+            FROM users
+            ORDER BY id
+        """).fetchall()
+    except sqlite3.OperationalError:
+        # Fallback for older databases without activity columns
+        users = db.execute("""
+            SELECT id, username, role, nickname, created_at,
+                   NULL as last_seen_at, NULL as last_seen_source,
+                   NULL as last_app_seen_at, NULL as last_web_seen_at
+            FROM users
+            ORDER BY id
+        """).fetchall()
     return render_template("admin.html", users=users)
 
 
@@ -811,7 +821,9 @@ def gallery(subpath=None):
     if not str(target).startswith(str(base)):
         abort(403)
     if not target.exists():
-        abort(404)
+        # Directory doesn't exist — show empty gallery instead of 404
+        return render_template("gallery.html", images=[], dirs=[],
+                               current_path="", breadcrumbs=[])
 
     if target.is_file():
         # Serve the image (only image types)
@@ -865,9 +877,13 @@ def chat_api():
 
     import urllib.request
     API_URL = "https://api.longcat.chat/openai/v1/chat/completions"
-    # 密钥从外部文件读取，避免被工具过滤
-    _keyfile = BASE_DIR / ".apikey"
-    API_KEY=_keyfile.read_text().strip() if _keyfile.exists() else ""
+    # 密钥：优先用环境变量 LONGCAT_API_KEY，其次读取 .apikey 文件
+    _keyfile_path = BASE_DIR / ".apikey"
+    API_KEY = os.environ.get("LONGCAT_API_KEY") or (
+        _keyfile_path.read_text().strip() if _keyfile_path.exists() else ""
+    )
+    if not API_KEY:
+        return jsonify({"reply": "🔑 小狗的 API 密钥还没配置好，请管理员在服务器上设置 LONGCAT_API_KEY 环境变量或创建 .apikey 文件。 汪"})
     MODEL = "LongCat-2.0-Preview"
 
     # Load soul.md system prompt
