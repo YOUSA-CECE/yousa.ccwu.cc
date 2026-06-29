@@ -1,112 +1,121 @@
 package com.yousa.app;
 
 import android.app.AlertDialog;
-import android.app.DownloadManager;
 import android.content.Context;
-import android.content.DialogInterface;
-import android.content.IntentFilter;
 import android.os.Build;
-
 import org.json.JSONObject;
-
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.Locale;
 
-/**
- * Checks for app updates on a background thread.
- */
-public class UpdateChecker {
-
+public final class UpdateChecker {
     public interface Callback {
-        void onResult(boolean hasUpdate, String versionName, String apkUrl, String changelog);
+        void onResult(boolean hasUpdate, String versionName, String apkUrl,
+                      String changelog, long apkSizeBytes);
         void onError(String error);
     }
 
-    private static final String VERSION_URL = "https://yousa.ccwu.cc/static/version.json";
+    private static final String VERSION_URL =
+        "https://yousa.ccwu.cc/static/version.json";
 
-    /**
-     * Check for updates in a background thread.
-     */
-    public static void check(final Context ctx, final Callback cb) {
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    URL url = new URL(VERSION_URL);
-                    HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                    conn.setConnectTimeout(8000);
-                    conn.setReadTimeout(8000);
-                    conn.setRequestMethod("GET");
+    private UpdateChecker() {}
 
-                    int code = conn.getResponseCode();
-                    if (code != 200) {
-                        cb.onError("Server returned " + code);
-                        return;
-                    }
-
-                    BufferedReader br = new BufferedReader(
-                        new InputStreamReader(conn.getInputStream(), "UTF-8"));
-                    StringBuilder sb = new StringBuilder();
-                    String line;
-                    while ((line = br.readLine()) != null) sb.append(line);
-                    br.close();
-
-                    JSONObject json = new JSONObject(sb.toString());
-                    int remoteCode = json.getInt("versionCode");
-                    String remoteName = json.getString("versionName");
-                    String apkUrl = json.getString("apkUrl");
-                    String changelog = json.optString("changelog", "");
-
-                    // Get local version code (works on all API levels)
-                    int localCode;
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                        localCode = (int) ctx.getPackageManager()
-                            .getPackageInfo(ctx.getPackageName(), 0)
-                            .getLongVersionCode();
-                    } else {
-                        localCode = ctx.getPackageManager()
-                            .getPackageInfo(ctx.getPackageName(), 0)
-                            .versionCode;
-                    }
-
-                    if (remoteCode > localCode) {
-                        cb.onResult(true, remoteName, apkUrl, changelog);
-                    } else {
-                        cb.onResult(false, remoteName, apkUrl, changelog);
-                    }
-                } catch (Exception e) {
-                    cb.onError(e.getMessage());
+    public static void check(final Context context, final Callback callback) {
+        new Thread(() -> {
+            HttpURLConnection connection = null;
+            try {
+                connection = openConnection(VERSION_URL, "GET");
+                int code = connection.getResponseCode();
+                if (code != HttpURLConnection.HTTP_OK) {
+                    callback.onError("服务器返回 " + code);
+                    return;
                 }
+                BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(connection.getInputStream(), "UTF-8"));
+                StringBuilder body = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) body.append(line);
+                reader.close();
+
+                JSONObject json = new JSONObject(body.toString());
+                int remoteCode = json.getInt("versionCode");
+                String remoteName = json.getString("versionName");
+                String apkUrl = json.getString("apkUrl");
+                String changelog = json.optString("changelog", "性能与稳定性改进");
+                long apkSizeBytes = json.optLong("apkSizeBytes", -1);
+                if (apkSizeBytes <= 0) apkSizeBytes = queryContentLength(apkUrl);
+
+                long localCode;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    localCode = context.getPackageManager()
+                        .getPackageInfo(context.getPackageName(), 0)
+                        .getLongVersionCode();
+                } else {
+                    localCode = context.getPackageManager()
+                        .getPackageInfo(context.getPackageName(), 0).versionCode;
+                }
+                callback.onResult(remoteCode > localCode, remoteName, apkUrl,
+                    changelog, apkSizeBytes);
+            } catch (Exception e) {
+                callback.onError(e.getMessage() == null ? "更新检查失败" : e.getMessage());
+            } finally {
+                if (connection != null) connection.disconnect();
             }
         }).start();
     }
 
-    /**
-     * Show an update dialog. If user agrees, start downloading.
-     */
-    public static void showUpdateDialog(final Context ctx,
-                                         final String versionName,
-                                         final String apkUrl,
-                                         final String changelog) {
-        new AlertDialog.Builder(ctx)
+    private static HttpURLConnection openConnection(String address, String method)
+        throws Exception {
+        HttpURLConnection connection =
+            (HttpURLConnection) new URL(address).openConnection();
+        connection.setConnectTimeout(8000);
+        connection.setReadTimeout(8000);
+        connection.setRequestMethod(method);
+        connection.setUseCaches(false);
+        connection.setRequestProperty("Cache-Control", "no-cache");
+        connection.setRequestProperty("User-Agent", "YousaAndroid UpdateChecker");
+        return connection;
+    }
+
+    private static long queryContentLength(String apkUrl) {
+        HttpURLConnection connection = null;
+        try {
+            connection = openConnection(apkUrl, "HEAD");
+            int code = connection.getResponseCode();
+            if (code >= 200 && code < 400) return connection.getContentLengthLong();
+        } catch (Exception ignored) {
+        } finally {
+            if (connection != null) connection.disconnect();
+        }
+        return -1;
+    }
+
+    public static void showUpdateDialog(final Context context,
+                                        final String versionName,
+                                        final String apkUrl,
+                                        final String changelog,
+                                        final long apkSizeBytes) {
+        String size = apkSizeBytes > 0 ? formatSize(apkSizeBytes) : "未知";
+        String notes = changelog == null || changelog.trim().isEmpty()
+            ? "性能与稳定性改进" : changelog.trim();
+        new AlertDialog.Builder(context)
             .setTitle("发现新版本 v" + versionName)
-            .setMessage("更新内容：\n" + changelog)
-            .setPositiveButton("立即更新", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialog, int which) {
-                    String fileName = "yousa-v" + versionName + ".apk";
-
-                    // Register receiver for this download
-                    ApkDownloadReceiver receiver = new ApkDownloadReceiver();
-                    ctx.registerReceiver(receiver,
-                        new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
-
-                    ApkDownloadReceiver.enqueueDownload(ctx, apkUrl, fileName);
-                }
-            })
+            .setMessage("安装包大小：" + size + "\n\n更新日志：\n" + notes)
+            .setPositiveButton("立即更新", (dialog, which) ->
+                ApkDownloadReceiver.enqueueApkDownload(
+                    context, apkUrl, "yousa-v" + versionName + ".apk"))
             .setNegativeButton("稍后再说", null)
             .show();
+    }
+
+    public static String formatSize(long bytes) {
+        if (bytes < 1024) return bytes + " B";
+        if (bytes < 1024L * 1024L) {
+            return String.format(Locale.getDefault(), "%.1f KB", bytes / 1024d);
+        }
+        return String.format(Locale.getDefault(), "%.1f MB",
+            bytes / (1024d * 1024d));
     }
 }

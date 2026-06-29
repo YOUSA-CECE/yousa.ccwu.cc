@@ -1,4 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Using built-in Android resources only -->
+    <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:fontFamily">serif</item>
+        <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:windowBackground">#EEF3F8</item>
+        <item name="android:colorAccent">#D76692</item>
+        <item name="android:statusBarColor">#EEF3F8</item>
+        <item name="android:navigationBarColor">#EEF3F8</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowNoTitle">true</item>
+    </style>
 </resources>

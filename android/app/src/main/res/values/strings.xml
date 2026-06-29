@@ -1,5 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Using built-in Android theme, no custom theme needed -->
     <string name="app_name">yousa</string>
+    <string name="site_name">yousa.ccwu.cc</string>
+    <string name="splash_logo">Y</string>
+    <string name="pull_to_refresh">下拉刷新</string>
+    <string name="release_to_refresh">松开刷新</string>
+    <string name="refreshing">正在刷新…</string>
+    <string name="load_failed">页面暂时无法连接</string>
+    <string name="check_network">请检查网络后重试，登录状态不会丢失。</string>
+    <string name="retry">重新连接</string>
+    <string name="download_started">已开始下载</string>
+    <string name="download_failed">无法开始下载</string>
 </resources>

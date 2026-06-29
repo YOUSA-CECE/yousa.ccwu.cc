@@ -1739,3 +1739,83 @@ a:hover {
 .guestbook-wrap textarea {
     font-family: var(--font);
 }
+
+/* Android app download page */
+.app-download-page {
+    max-width: 680px;
+    margin: 2rem auto;
+}
+
+.app-download-hero {
+    padding: 3rem 2rem;
+    text-align: center;
+}
+
+.app-download-title {
+    font-size: clamp(1.8rem, 6vw, 2.7rem);
+}
+
+.app-download-subtitle {
+    margin-top: .75rem;
+}
+
+.app-download-card {
+    max-width: 330px;
+    margin: 2rem auto;
+    padding: 2rem;
+    text-align: center;
+}
+
+.app-phone-icon {
+    width: 68px;
+    height: 68px;
+    margin: 0 auto .8rem;
+    border-radius: 18px;
+    display: grid;
+    place-items: center;
+    background: #222831;
+    color: #f7c8d8;
+    font-family: "Times New Roman", Times, serif;
+    font-size: 2.2rem;
+    font-weight: 700;
+    box-shadow: 0 12px 28px rgba(34, 40, 49, .2);
+}
+
+.app-download-button {
+    display: inline-flex;
+    margin-top: 1rem;
+}
+
+.app-release-notes,
+.app-install-guide {
+    max-width: 460px;
+    margin: 1.5rem auto 0;
+    text-align: left;
+}
+
+.app-release-notes p,
+.app-install-guide ol {
+    margin-top: .55rem;
+    color: var(--text-muted);
+    font-size: .92rem;
+    line-height: 1.8;
+}
+
+.app-install-guide ol {
+    padding-left: 1.3rem;
+}
+
+@media (max-width: 640px) {
+    .app-download-page {
+        margin: .5rem auto;
+    }
+
+    .app-download-hero {
+        padding: 1.5rem 1rem;
+    }
+
+    .app-download-card {
+        margin: 1.35rem auto;
+        padding: 1.5rem 1rem;
+    }
+}

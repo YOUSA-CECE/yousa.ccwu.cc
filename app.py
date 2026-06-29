@@ -558,6 +558,7 @@ def home():
 
 
 @app.route("/app")
+@app.route("/app")
 @app.route("/download")
 def app_download():
     return render_template("app_download.html")

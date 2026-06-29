@@ -2,55 +2,73 @@
 {% block title %}yousa 安卓 App{% endblock %}
 {% block content %}
 
-<section class="home-main" style="max-width:640px;margin:2rem auto;">
-    <div class="hero glass-panel" style="text-align:center;padding:3rem 2rem;">
+<section class="home-main app-download-page">
+    <div class="hero glass-panel app-download-hero">
         <p class="hero-eyebrow">Yousa for Android</p>
-        <h2 class="hero-title" style="font-size:clamp(1.8rem,4vw,2.6rem);">安卓 App</h2>
-        <p class="hero-sub" style="margin-top:.75rem;">
-            WebView 壳，完整加载 yousa.ccwu.cc。<br>
-            支持下拉刷新、后退导航、自动更新。
+        <h2 class="hero-title app-download-title">安卓 App</h2>
+        <p class="hero-sub app-download-subtitle">
+            为手机屏幕优化，支持下拉刷新、页面转场、文件下载和自动更新。
         </p>
 
-        <div style="margin:2rem auto;max-width:320px;">
-            <div class="glass-panel" style="padding:2rem;text-align:center;">
-                <div style="font-size:3.5rem;margin-bottom:.5rem;">📱</div>
-                <div style="font-size:.85rem;color:var(--text-muted);" id="app-version">加载中...</div>
-                <a href="/static/yousa-安卓App_v1.0.0.apk"
-                   class="btn-primary"
-                   style="margin-top:1rem;display:inline-flex;gap:.5rem;"
-                   download>
-                    ⬇ 下载 APK
-                </a>
-            </div>
+        <div class="app-download-card glass-panel">
+            <div class="app-phone-icon" aria-hidden="true">Y</div>
+            <div id="app-version">正在读取最新版本…</div>
+            <a id="app-download-link"
+               href="#"
+               class="btn-primary app-download-button"
+               download>
+                下载 APK
+            </a>
         </div>
 
-        <div style="text-align:left;max-width:420px;margin:0 auto;">
-            <h3 style="font-size:1rem;margin-bottom:.5rem;">📋 安装说明</h3>
-            <ol style="margin:0;padding-left:1.25rem;color:var(--text-muted);font-size:.9rem;line-height:1.8;">
-                <li>下载 APK 文件</li>
-                <li>在手机上打开文件管理器，找到下载的 APK</li>
-                <li>允许"未知来源应用安装"</li>
-                <li>安装完成，打开即可使用</li>
+        <div class="app-release-notes">
+            <h3>本次更新</h3>
+            <p id="app-changelog">正在读取更新日志…</p>
+        </div>
+
+        <div class="app-install-guide">
+            <h3>安装说明</h3>
+            <ol>
+                <li>点击“下载 APK”，等待系统下载完成。</li>
+                <li>打开下载通知或手机的“下载”目录。</li>
+                <li>首次安装时，按提示允许浏览器安装未知来源应用。</li>
+                <li>直接覆盖安装即可保留登录状态和应用数据。</li>
             </ol>
-        </div>
-
-        <div style="margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border);font-size:.82rem;color:var(--text-dim);">
-            每次网站更新后，App 启动时会自动检查新版并提示更新。
         </div>
     </div>
 </section>
 
 <script>
-// 从 version.json 动态获取版本号
-fetch('/static/version.json')
-  .then(r => r.json())
-  .then(d => {
-    document.getElementById('app-version').textContent =
-      'v' + d.versionName + ' · ' + (d.apkUrl.endsWith('.apk') ? '12KB' : '');
-  })
-  .catch(() => {
-    document.getElementById('app-version').textContent = 'v1.0.1';
-  });
+(function () {
+    const version = document.getElementById('app-version');
+    const changelog = document.getElementById('app-changelog');
+    const link = document.getElementById('app-download-link');
+
+    function formatBytes(bytes) {
+        const value = Number(bytes);
+        if (!Number.isFinite(value) || value <= 0) return '大小未知';
+        if (value < 1024 * 1024) return (value / 1024).toFixed(1) + ' KB';
+        return (value / 1024 / 1024).toFixed(1) + ' MB';
+    }
+
+    fetch('/static/version.json?ts=' + Date.now(), {cache: 'no-store'})
+        .then(function (response) {
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            return response.json();
+        })
+        .then(function (data) {
+            version.textContent = 'v' + data.versionName + ' · '
+                + formatBytes(data.apkSizeBytes);
+            changelog.textContent = data.changelog || '性能与稳定性改进';
+            link.href = data.apkUrl;
+            link.setAttribute('download', 'yousa-v' + data.versionName + '.apk');
+        })
+        .catch(function () {
+            version.textContent = '暂时无法读取版本信息';
+            changelog.textContent = '请稍后刷新页面重试。';
+            link.hidden = true;
+        });
+})();
 </script>
 
 {% endblock %}
