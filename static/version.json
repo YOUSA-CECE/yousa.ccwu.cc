@@ -1,7 +1,7 @@
 {
-  "versionCode": 6,
-  "versionName": "1.0.5",
-  "apkUrl": "https://raw.githubusercontent.com/YOUSA-CECE/yousa.ccwu.cc/master/static/yousa-android-v1.0.5.apk",
-  "apkSizeBytes": 31961,
-  "changelog": "新增完整自动更新：启动时同时检查官网和 GitHub，发现新版本后显示版本、大小与更新日志；确认后自动下载，下载完成自动进入安装，首次安装可引导授权后继续。"
+  "versionCode": 7,
+  "versionName": "1.0.6",
+  "apkUrl": "https://raw.githubusercontent.com/YOUSA-CECE/yousa.ccwu.cc/master/static/yousa-android-v1.0.6.apk",
+  "apkSizeBytes": 32237,
+  "changelog": "提升启动与导航响应：更新检查延后到首屏显示后，避免争抢网络；缩短开屏和页面动画，启用预栅格与硬件渲染，并增加点击即时反馈。"
 }

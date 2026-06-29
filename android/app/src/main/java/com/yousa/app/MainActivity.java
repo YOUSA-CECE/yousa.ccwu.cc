@@ -49,6 +49,7 @@ public class MainActivity extends Activity {
     private boolean refreshing;
     private boolean authNavigationPending;
     private boolean installPermissionRequested;
+    private boolean updateCheckScheduled;
     private int authWatchdogToken;
     private long splashStartedAt;
 
@@ -74,7 +75,6 @@ public class MainActivity extends Activity {
         findViewById(R.id.retryButton).setOnClickListener(v -> retryCurrentPage());
 
         configureWebView();
-        checkForUpdate();
 
         // Always enter through the public home page. Restoring an old protected URL
         // can trigger duplicate login redirects after Android recreates the process.
@@ -130,6 +130,7 @@ public class MainActivity extends Activity {
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
         settings.setTextZoom(100);
         settings.setMediaPlaybackRequiresUserGesture(false);
+        settings.setOffscreenPreRaster(true);
         settings.setUserAgentString(settings.getUserAgentString() + " YousaAndroid/1.0");
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
 
@@ -137,6 +138,7 @@ public class MainActivity extends Activity {
         cookieManager.setAcceptCookie(true);
         cookieManager.setAcceptThirdPartyCookies(webView, true);
         webView.addJavascriptInterface(new AuthBridge(), "YousaApp");
+        webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
 
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
@@ -152,7 +154,7 @@ public class MainActivity extends Activity {
                 if (upgradeAppUrlToHttps(view, Uri.parse(url))) return;
                 errorPanel.setVisibility(View.GONE);
                 view.animate().cancel();
-                view.setAlpha(0.94f);
+                view.setAlpha(0.98f);
                 view.setTranslationX(0f);
                 if (isPath(url, "/logout")) beginAuthNavigation();
             }
@@ -162,6 +164,7 @@ public class MainActivity extends Activity {
                 errorPanel.setVisibility(View.GONE);
                 animatePageIn();
                 dismissSplash();
+                scheduleUpdateCheck();
             }
 
             @Override
@@ -308,7 +311,7 @@ public class MainActivity extends Activity {
 
     private void animatePageIn() {
         webView.animate().cancel();
-        webView.animate().alpha(1f).translationX(0f).setDuration(220).start();
+        webView.animate().alpha(1f).translationX(0f).setDuration(90).start();
     }
 
     private void finishRefresh() {
@@ -388,12 +391,12 @@ public class MainActivity extends Activity {
 
     private void dismissSplash() {
         if (splashDismissed) return;
-        long wait = Math.max(0, 650 - (System.currentTimeMillis() - splashStartedAt));
+        long wait = Math.max(0, 260 - (System.currentTimeMillis() - splashStartedAt));
         splashPanel.postDelayed(() -> {
             if (splashDismissed) return;
             splashDismissed = true;
             splashPanel.animate().alpha(0f).scaleX(1.04f).scaleY(1.04f)
-                .setDuration(320)
+                .setDuration(170)
                 .withEndAction(() -> splashPanel.setVisibility(View.GONE))
                 .start();
         }, wait);
@@ -466,10 +469,17 @@ public class MainActivity extends Activity {
         });
     }
 
+    private void scheduleUpdateCheck() {
+        if (updateCheckScheduled) return;
+        updateCheckScheduled = true;
+        // Let the home page finish using the network and renderer first.
+        webView.postDelayed(this::checkForUpdate, 1400);
+    }
+
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         if (keyCode == KeyEvent.KEYCODE_BACK && webView.canGoBack()) {
-            webView.animate().alpha(0.55f).translationX(45f).setDuration(130)
+            webView.animate().alpha(0.72f).translationX(28f).setDuration(80)
                 .withEndAction(() -> webView.goBack()).start();
             return true;
         }

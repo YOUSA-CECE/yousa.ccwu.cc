@@ -76,6 +76,21 @@ a:hover {
     color: #b84e78;
 }
 
+a,
+button,
+[role="button"] {
+    -webkit-tap-highlight-color: rgba(215, 102, 146, .14);
+    touch-action: manipulation;
+}
+
+a:active,
+button:active,
+[role="button"]:active {
+    opacity: .78;
+    transform: scale(.985);
+    transition-duration: .04s;
+}
+
 .site-backdrop {
     position: fixed;
     inset: 0;
