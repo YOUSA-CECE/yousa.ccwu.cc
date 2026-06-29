@@ -164,7 +164,10 @@ def ensure_activity_schema():
         return
     with _schema_lock:
         if _activity_schema_path != db_path:
-            migrate_user_activity_schema()
+            try:
+                migrate_user_activity_schema()
+            except Exception as e:
+                print(f"  ⚠️ 活动表迁移跳过: {e}")
             _activity_schema_path = db_path
 
 
