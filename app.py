@@ -36,6 +36,10 @@ DB_PATH = BASE_DIR / "users.db"
 TEMPLATES_DIR = BASE_DIR / "templates"
 STATIC_DIR = BASE_DIR / "static"
 SAFE_CACHE_PATHS = {"/", "/wiki/", "/blog", "/about", "/app", "/download", "/guestbook"}
+SAFE_CACHE_ENDPOINTS = {
+    "home", "wiki_view", "wiki_search", "blog_list", "blog_post",
+    "about", "app_download", "guestbook", "chat", "site_search",
+}
 CACHE_INVALIDATING_ENDPOINTS = {
     "login", "logout", "register", "delete_user", "change_role",
     "update_nickname", "change_password", "blog_write", "blog_delete",
@@ -325,9 +329,12 @@ def apply_cache_policy(response):
     is_static = request.endpoint == "static"
     is_safe_page = (
         request.method == "GET"
-        and request.path in SAFE_CACHE_PATHS
+        and (
+            request.path in SAFE_CACHE_PATHS
+            or request.endpoint in SAFE_CACHE_ENDPOINTS
+        )
         and response.status_code == 200
-        and response.mimetype == "text/html"
+        and response.mimetype in ("text/html", "application/json")
     )
 
     if is_static:
@@ -339,13 +346,16 @@ def apply_cache_policy(response):
             response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
     elif is_safe_page:
         response.headers["Cache-Control"] = (
-            "private, max-age=90, stale-while-revalidate=300"
+            "private, max-age=180, stale-while-revalidate=900"
         )
         vary = response.headers.get("Vary", "")
         vary_values = {item.strip() for item in vary.split(",") if item.strip()}
         vary_values.add("Cookie")
         response.headers["Vary"] = ", ".join(sorted(vary_values))
         response.headers["X-Yousa-Cache"] = "safe-navigation"
+        if "ETag" not in response.headers:
+            response.add_etag()
+        response.make_conditional(request)
     else:
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
         response.headers["Pragma"] = "no-cache"
@@ -1402,7 +1412,13 @@ def file_browser(subpath=None):
         abort(404)
 
     if target.is_file():
-        return send_from_directory(target.parent, target.name)
+        return send_from_directory(
+            target.parent,
+            target.name,
+            as_attachment=True,
+            download_name=target.name,
+            conditional=True,
+        )
 
     entries = []
     try:

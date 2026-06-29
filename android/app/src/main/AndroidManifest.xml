@@ -29,6 +29,13 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".UpdatePromptActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:theme="@style/UpdatePromptTheme" />
+
         <receiver
             android:name=".ApkDownloadReceiver"
             android:exported="false">

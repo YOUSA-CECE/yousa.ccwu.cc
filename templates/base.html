@@ -238,7 +238,23 @@
                 if (Date.now() - lastRun < 60000) return;
                 sessionStorage.setItem(stampKey, String(Date.now()));
 
-                for (const path of pages) {
+                const dynamicLinks = Array.from(document.querySelectorAll('a[href]'))
+                    .map(function(link) {
+                        try { return new URL(link.href, location.href); }
+                        catch (_) { return null; }
+                    })
+                    .filter(function(url) {
+                        if (!url || url.origin !== location.origin) return false;
+                        return url.pathname.startsWith('/wiki/')
+                            || url.pathname.startsWith('/blog/')
+                            || url.pathname === '/search'
+                            || url.pathname === '/chat';
+                    })
+                    .slice(0, 8)
+                    .map(function(url) { return url.pathname + url.search; });
+                const targets = Array.from(new Set(pages.concat(dynamicLinks)));
+
+                for (const path of targets) {
                     if (path === location.pathname) continue;
                     try {
                         await fetch(path, {

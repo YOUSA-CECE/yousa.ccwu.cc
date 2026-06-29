@@ -1689,9 +1689,35 @@ button:active,
 
     .dog-chat-panel {
         right: 0;
-        bottom: 68px;
+        bottom: 64px;
         width: calc(100vw - 1.6rem);
-        height: min(480px, calc(100vh - 7.5rem));
+        height: min(460px, calc(100dvh - 7rem));
+    }
+
+    .dog-chat-head {
+        min-height: 46px;
+        padding: .55rem .7rem;
+    }
+
+    #dog-chat-close {
+        width: 28px;
+        height: 28px;
+        font-size: 1rem;
+    }
+
+    .dog-chat-form {
+        gap: .4rem;
+        padding: .55rem;
+        padding-bottom: max(.55rem, env(safe-area-inset-bottom));
+    }
+
+    #dog-chat-input {
+        min-height: 36px;
+        padding: .45rem .6rem;
+    }
+
+    #dog-chat-send {
+        padding: 0 .75rem;
     }
 }
 

@@ -1,10 +1,11 @@
 package com.yousa.app;
 
 import android.annotation.SuppressLint;
+import android.Manifest;
 import android.app.Activity;
 import android.app.DownloadManager;
 import android.content.Intent;
-import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
@@ -18,6 +19,7 @@ import android.webkit.DownloadListener;
 import android.webkit.JavascriptInterface;
 import android.webkit.RenderProcessGoneDetail;
 import android.webkit.URLUtil;
+import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
@@ -32,13 +34,9 @@ public class MainActivity extends Activity {
 
     private static final String APP_URL = "https://yousa.ccwu.cc";
     private static final String APP_HOST = "yousa.ccwu.cc";
-    private static final float REFRESH_DISTANCE = 150f;
-    private static final String UPDATE_PROMPT_PREFS = "yousa_update_prompt";
-    private static final String KEY_UPDATE_CODE = "version_code";
-    private static final String KEY_UPDATE_NAME = "version_name";
-    private static final String KEY_UPDATE_URL = "apk_url";
-    private static final String KEY_UPDATE_LOG = "changelog";
-    private static final String KEY_UPDATE_SIZE = "apk_size";
+    private static final float REFRESH_DISTANCE_DP = 96f;
+    private static final int REQUEST_STORAGE_PERMISSION = 701;
+    private static final int REQUEST_FILE_CHOOSER = 702;
 
     private WebView webView;
     private ProgressBar pageProgress;
@@ -49,27 +47,28 @@ public class MainActivity extends Activity {
     private View refreshIndicator;
     private View refreshLogo;
     private ProgressBar refreshSpinner;
-    private View updatePanel;
-    private TextView updateVersion;
-    private TextView updateSize;
-    private TextView updateChangelog;
     private float touchStartY;
     private boolean canPull;
+    private boolean pullGestureActive;
     private boolean splashDismissed;
     private boolean blankPageRetryUsed;
     private boolean refreshing;
     private boolean authNavigationPending;
     private boolean installPermissionRequested;
     private boolean updateCheckScheduled;
-    private boolean pageVisible;
     private int authWatchdogToken;
     private long splashStartedAt;
+    private float refreshDistance;
+    private PendingDownload pendingDownload;
+    private ValueCallback<Uri[]> fileChooserCallback;
 
     @SuppressLint({"SetJavaScriptEnabled", "ClickableViewAccessibility"})
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         splashStartedAt = System.currentTimeMillis();
+        refreshDistance = REFRESH_DISTANCE_DP
+            * getResources().getDisplayMetrics().density;
         configureSystemBars();
         setContentView(R.layout.activity_main);
 
@@ -82,15 +81,9 @@ public class MainActivity extends Activity {
         refreshIndicator = findViewById(R.id.refreshIndicator);
         refreshLogo = findViewById(R.id.refreshLogo);
         refreshSpinner = findViewById(R.id.refreshSpinner);
-        updatePanel = findViewById(R.id.updatePanel);
-        updateVersion = findViewById(R.id.updateVersion);
-        updateSize = findViewById(R.id.updateSize);
-        updateChangelog = findViewById(R.id.updateChangelog);
         refreshIndicator.setTranslationY(-100f);
         refreshIndicator.setAlpha(0f);
         findViewById(R.id.retryButton).setOnClickListener(v -> retryCurrentPage());
-        findViewById(R.id.updateLaterButton).setOnClickListener(v -> dismissPendingUpdate());
-        findViewById(R.id.updateNowButton).setOnClickListener(v -> downloadPendingUpdate());
 
         configureWebView();
 
@@ -157,12 +150,36 @@ public class MainActivity extends Activity {
         cookieManager.setAcceptThirdPartyCookies(webView, true);
         webView.addJavascriptInterface(new AuthBridge(), "YousaApp");
         webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+        webView.setOverScrollMode(View.OVER_SCROLL_ALWAYS);
 
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
             public void onProgressChanged(WebView view, int progress) {
                 pageProgress.setProgress(progress);
                 pageProgress.setVisibility(progress < 100 ? View.VISIBLE : View.GONE);
+            }
+
+            @Override
+            public boolean onShowFileChooser(WebView view,
+                                             ValueCallback<Uri[]> callback,
+                                             FileChooserParams params) {
+                if (fileChooserCallback != null) {
+                    fileChooserCallback.onReceiveValue(null);
+                }
+                fileChooserCallback = callback;
+                try {
+                    Intent picker = params.createIntent();
+                    picker.addCategory(Intent.CATEGORY_OPENABLE);
+                    picker.putExtra(Intent.EXTRA_ALLOW_MULTIPLE,
+                        params.getMode() == FileChooserParams.MODE_OPEN_MULTIPLE);
+                    startActivityForResult(picker, REQUEST_FILE_CHOOSER);
+                    return true;
+                } catch (Exception e) {
+                    fileChooserCallback = null;
+                    Toast.makeText(MainActivity.this,
+                        "无法打开文件选择器", Toast.LENGTH_LONG).show();
+                    return false;
+                }
             }
         });
 
@@ -179,11 +196,9 @@ public class MainActivity extends Activity {
 
             @Override
             public void onPageCommitVisible(WebView view, String url) {
-                pageVisible = true;
                 errorPanel.setVisibility(View.GONE);
                 animatePageIn();
                 dismissSplash();
-                showPendingUpdateIfReady();
                 scheduleUpdateCheck();
             }
 
@@ -240,13 +255,15 @@ public class MainActivity extends Activity {
                 case MotionEvent.ACTION_DOWN:
                     touchStartY = event.getY();
                     canPull = !webView.canScrollVertically(-1);
+                    pullGestureActive = false;
                     break;
                 case MotionEvent.ACTION_MOVE:
                     float distance = event.getY() - touchStartY;
                     if (canPull && distance > 35f) {
-                        pullHint.setText(distance >= REFRESH_DISTANCE
+                        pullGestureActive = true;
+                        pullHint.setText(distance >= refreshDistance
                             ? R.string.release_to_refresh : R.string.pull_to_refresh);
-                        float progress = Math.min(1f, distance / REFRESH_DISTANCE);
+                        float progress = Math.min(1f, distance / refreshDistance);
                         refreshIndicator.setVisibility(View.VISIBLE);
                         refreshIndicator.setAlpha(progress);
                         refreshIndicator.setScaleX(0.82f + progress * 0.18f);
@@ -254,11 +271,12 @@ public class MainActivity extends Activity {
                         refreshIndicator.setTranslationY(-80f + progress * 92f);
                         refreshLogo.setRotation(distance * 1.35f);
                     }
-                    break;
+                    return pullGestureActive;
                 case MotionEvent.ACTION_UP:
                 case MotionEvent.ACTION_CANCEL:
                     float releasedDistance = event.getY() - touchStartY;
-                    if (canPull && releasedDistance >= REFRESH_DISTANCE) {
+                    boolean handledPull = pullGestureActive;
+                    if (canPull && releasedDistance >= refreshDistance) {
                         refreshing = true;
                         pullHint.setText(R.string.refreshing);
                         refreshLogo.setVisibility(View.GONE);
@@ -270,12 +288,22 @@ public class MainActivity extends Activity {
                         hideRefreshIndicator();
                     }
                     canPull = false;
-                    break;
+                    pullGestureActive = false;
+                    return handledPull;
                 default:
                     break;
             }
             return false;
         });
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != REQUEST_FILE_CHOOSER || fileChooserCallback == null) return;
+        Uri[] result = WebChromeClient.FileChooserParams.parseResult(resultCode, data);
+        fileChooserCallback.onReceiveValue(result);
+        fileChooserCallback = null;
     }
 
     private boolean openExternalIfNeeded(Uri uri) {
@@ -446,6 +474,16 @@ public class MainActivity extends Activity {
 
     private void enqueueWebDownload(String url, String userAgent,
                                     String contentDisposition, String mimeType) {
+        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P
+            && checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                != PackageManager.PERMISSION_GRANTED) {
+            pendingDownload = new PendingDownload(
+                url, userAgent, contentDisposition, mimeType);
+            requestPermissions(
+                new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                REQUEST_STORAGE_PERMISSION);
+            return;
+        }
         if (!URLUtil.isNetworkUrl(url)) {
             Toast.makeText(this, "暂不支持此下载类型", Toast.LENGTH_SHORT).show();
             return;
@@ -457,17 +495,59 @@ public class MainActivity extends Activity {
             request.setDescription("正在下载…");
             request.setNotificationVisibility(
                 DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+            request.setAllowedOverMetered(true);
+            request.setAllowedOverRoaming(true);
             request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName);
-            request.setMimeType(mimeType);
-            request.addRequestHeader("User-Agent", userAgent);
+            if (mimeType != null && !mimeType.trim().isEmpty()) {
+                request.setMimeType(mimeType);
+            }
+            if (userAgent != null && !userAgent.trim().isEmpty()) {
+                request.addRequestHeader("User-Agent", userAgent);
+            }
             String cookies = CookieManager.getInstance().getCookie(url);
             if (cookies != null) request.addRequestHeader("Cookie", cookies);
+            request.addRequestHeader("Referer",
+                webView.getUrl() == null ? APP_URL : webView.getUrl());
             DownloadManager manager =
                 (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
-            manager.enqueue(request);
-            Toast.makeText(this, R.string.download_started, Toast.LENGTH_SHORT).show();
+            long downloadId = manager.enqueue(request);
+            Toast.makeText(this,
+                "已加入系统下载（任务 " + downloadId + "）",
+                Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
             Toast.makeText(this, R.string.download_failed, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                                           int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode != REQUEST_STORAGE_PERMISSION || pendingDownload == null) return;
+        PendingDownload download = pendingDownload;
+        pendingDownload = null;
+        if (grantResults.length > 0
+            && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            enqueueWebDownload(download.url, download.userAgent,
+                download.contentDisposition, download.mimeType);
+        } else {
+            Toast.makeText(this, "没有存储权限，无法保存文件",
+                Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private static final class PendingDownload {
+        final String url;
+        final String userAgent;
+        final String contentDisposition;
+        final String mimeType;
+
+        PendingDownload(String url, String userAgent,
+                        String contentDisposition, String mimeType) {
+            this.url = url;
+            this.userAgent = userAgent;
+            this.contentDisposition = contentDisposition;
+            this.mimeType = mimeType;
         }
     }
 
@@ -477,13 +557,14 @@ public class MainActivity extends Activity {
             public void onResult(boolean hasUpdate, int versionCode, String versionName,
                                  String apkUrl, String changelog, long apkSizeBytes) {
                 if (hasUpdate) {
-                    savePendingUpdate(versionCode, versionName, apkUrl,
-                        changelog, apkSizeBytes);
                     if (!isFinishing()) {
-                        runOnUiThread(MainActivity.this::showPendingUpdateIfReady);
+                        runOnUiThread(() -> UpdatePromptActivity.show(
+                            MainActivity.this, versionCode, versionName,
+                            apkUrl, changelog, apkSizeBytes));
                     }
                 } else {
-                    clearPendingUpdate();
+                    UpdatePromptActivity.clearObsoletePrompt(
+                        MainActivity.this, getLocalVersionCode());
                 }
             }
 
@@ -492,42 +573,6 @@ public class MainActivity extends Activity {
                 // 更新检查失败不影响主页面使用。
             }
         });
-    }
-
-    private void savePendingUpdate(int versionCode, String versionName,
-                                   String apkUrl, String changelog, long apkSizeBytes) {
-        getSharedPreferences(UPDATE_PROMPT_PREFS, MODE_PRIVATE).edit()
-            .putInt(KEY_UPDATE_CODE, versionCode)
-            .putString(KEY_UPDATE_NAME, versionName)
-            .putString(KEY_UPDATE_URL, apkUrl)
-            .putString(KEY_UPDATE_LOG, changelog)
-            .putLong(KEY_UPDATE_SIZE, apkSizeBytes)
-            .apply();
-    }
-
-    private void showPendingUpdateIfReady() {
-        if (!pageVisible || isFinishing()
-            || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1
-                && isDestroyed())) {
-            return;
-        }
-        SharedPreferences preferences =
-            getSharedPreferences(UPDATE_PROMPT_PREFS, MODE_PRIVATE);
-        int remoteCode = preferences.getInt(KEY_UPDATE_CODE, -1);
-        if (remoteCode <= getLocalVersionCode()) {
-            clearPendingUpdate();
-            return;
-        }
-        String versionName = preferences.getString(KEY_UPDATE_NAME, "");
-        String changelog = preferences.getString(
-            KEY_UPDATE_LOG, "性能与稳定性改进");
-        long apkSize = preferences.getLong(KEY_UPDATE_SIZE, -1);
-        updateVersion.setText("v" + versionName);
-        updateSize.setText("安装包大小：" + UpdateChecker.formatSize(apkSize));
-        updateChangelog.setText(changelog);
-        updatePanel.setAlpha(1f);
-        updatePanel.setVisibility(View.VISIBLE);
-        updatePanel.bringToFront();
     }
 
     private int getLocalVersionCode() {
@@ -542,30 +587,6 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void dismissPendingUpdate() {
-        clearPendingUpdate();
-        updatePanel.setVisibility(View.GONE);
-    }
-
-    private void downloadPendingUpdate() {
-        SharedPreferences preferences =
-            getSharedPreferences(UPDATE_PROMPT_PREFS, MODE_PRIVATE);
-        String versionName = preferences.getString(KEY_UPDATE_NAME, "latest");
-        String apkUrl = preferences.getString(KEY_UPDATE_URL, "");
-        if (apkUrl == null || apkUrl.trim().isEmpty()) {
-            Toast.makeText(this, "更新地址无效，请稍后重试", Toast.LENGTH_LONG).show();
-            return;
-        }
-        clearPendingUpdate();
-        updatePanel.setVisibility(View.GONE);
-        ApkDownloadReceiver.enqueueApkDownload(
-            this, apkUrl, "yousa-v" + versionName + ".apk");
-    }
-
-    private void clearPendingUpdate() {
-        getSharedPreferences(UPDATE_PROMPT_PREFS, MODE_PRIVATE).edit().clear().apply();
-    }
-
     private void scheduleUpdateCheck() {
         if (updateCheckScheduled) return;
         updateCheckScheduled = true;
@@ -575,10 +596,6 @@ public class MainActivity extends Activity {
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        if (keyCode == KeyEvent.KEYCODE_BACK
-            && updatePanel.getVisibility() == View.VISIBLE) {
-            return true;
-        }
         if (keyCode == KeyEvent.KEYCODE_BACK && webView.canGoBack()) {
             webView.animate().alpha(0.72f).translationX(28f).setDuration(80)
                 .withEndAction(() -> webView.goBack()).start();
@@ -594,6 +611,10 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        if (fileChooserCallback != null) {
+            fileChooserCallback.onReceiveValue(null);
+            fileChooserCallback = null;
+        }
         if (webView != null) {
             webView.stopLoading();
             webView.setWebChromeClient(null);
