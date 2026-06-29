@@ -83,11 +83,16 @@
                 <button onclick="document.getElementById('cloud-filter').value='';filterFiles('')">✕</button>
             </div>
             {% if is_admin %}
-            <button onclick="toggleUpload()">📤 上传</button>
             <button onclick="promptMkdir()">📁 新建文件夹</button>
             {% endif %}
         </div>
     </div>
+
+    {% if is_admin %}
+    <div style="text-align:center;margin:0 auto 1rem;width:30%;min-width:120px">
+        <button class="form-btn" style="width:100%;font-size:0.9rem;padding:0.4rem 0" onclick="toggleUpload()">📤 上传文件</button>
+    </div>
+    {% endif %}
 
     <div class="cloud-stats">
         <span class="cloud-stat">📁 <strong>{{ dirs|length }}</strong> 个文件夹</span>
@@ -176,12 +181,6 @@
         {% if is_admin %}
         <p style="font-size:0.85rem;color:var(--text-dim);margin-top:0.5rem">点击「上传」按钮添加文件</p>
         {% endif %}
-    </div>
-    {% endif %}
-
-    {% if is_admin %}
-    <div style="text-align:center;margin-top:1.5rem">
-        <button class="form-btn" style="font-size:0.95rem;padding:0.5rem 1.5rem" onclick="toggleUpload()">📤 上传文件</button>
     </div>
     {% endif %}
 </section>

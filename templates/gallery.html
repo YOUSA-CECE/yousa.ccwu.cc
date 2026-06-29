@@ -73,6 +73,12 @@
         </div>
     </div>
 
+    {% if is_admin %}
+    <div style="text-align:center;margin:0 auto 1rem;width:30%;min-width:120px">
+        <button class="form-btn" style="width:100%;font-size:0.9rem;padding:0.4rem 0" onclick="toggleUploadForm()">📤 上传照片</button>
+    </div>
+    {% endif %}
+
     <!-- Upload form -->
     <div class="upload-form glass-panel" id="upload-form">
         <div style="border:2px dashed var(--border-dark);border-radius:var(--radius);padding:1.5rem;text-align:center;margin-bottom:0.8rem;cursor:pointer" id="drop-zone"
@@ -153,12 +159,6 @@
         {% if is_admin %}
         <p style="font-size:0.85rem;color:var(--text-dim);margin-top:0.5rem">拖拽照片到页面上传，或点击下方按钮</p>
         {% endif %}
-    </div>
-    {% endif %}
-
-    {% if is_admin %}
-    <div style="text-align:center;margin-top:1.5rem">
-        <button class="form-btn" style="font-size:0.95rem;padding:0.5rem 1.5rem" onclick="toggleUploadForm()">📤 上传照片</button>
     </div>
     {% endif %}
 </section>
