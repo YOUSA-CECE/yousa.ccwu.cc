@@ -62,15 +62,15 @@
 </style>
 {% endblock %}
 {% block content %}
-<section class="gallery-shell">
-    <div class="gallery-header glass-panel">
+<section class="gallery-shell" id="gallery-shell"
+    ondragover="event.preventDefault();if(isAdmin){document.getElementById('drop-zone').style.borderColor='var(--accent)';document.getElementById('upload-form').classList.add('open');}"
+    ondragleave="event.preventDefault();document.getElementById('drop-zone').style.borderColor='var(--border-dark)'"
+    ondrop="if(isAdmin){event.preventDefault();var f=event.dataTransfer.files[0];if(f&&f.type.match('image.*')){document.getElementById('upload-file').files=event.dataTransfer.files;document.getElementById('upload-form').classList.add('open');uploadPhoto();}}">
+    <div class="gallery-header glass-panel" style="text-align:center">
         <div>
             <h1>🖼️ 画廊</h1>
             <p class="page-desc" style="margin-top:0.3rem">浏览与上传照片</p>
         </div>
-        {% if is_admin %}
-        <button class="form-btn form-btn-sm" onclick="toggleUploadForm()">📤 上传</button>
-        {% endif %}
     </div>
 
     <!-- Upload form -->
@@ -148,11 +148,17 @@
         {% endfor %}
     </div>
     {% elif not dirs %}
-    <div class="gallery-empty glass-panel">
+    <div class="gallery-empty glass-panel" id="gallery-empty">
         <p>📭 暂无图片</p>
         {% if is_admin %}
-        <p style="font-size:0.85rem;color:var(--text-dim);margin-top:0.5rem">点击「上传照片」按钮添加</p>
+        <p style="font-size:0.85rem;color:var(--text-dim);margin-top:0.5rem">拖拽照片到页面上传，或点击下方按钮</p>
         {% endif %}
+    </div>
+    {% endif %}
+
+    {% if is_admin %}
+    <div style="text-align:center;margin-top:1.5rem">
+        <button class="form-btn" style="font-size:0.95rem;padding:0.5rem 1.5rem" onclick="toggleUploadForm()">📤 上传照片</button>
     </div>
     {% endif %}
 </section>
@@ -245,6 +251,8 @@
 
     lb.addEventListener('click', function(e) { if (e.target === lb) closeLightbox(); });
 })();
+
+var isAdmin = {{ 'true' if is_admin else 'false' }};
 
 function toggleUploadForm() {
     document.getElementById('upload-form').classList.toggle('open');
