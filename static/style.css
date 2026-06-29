@@ -16,6 +16,12 @@
     --font: SimSun, "宋体", "Times New Roman", Times, serif;
     --radius: 8px;
     --radius-sm: 6px;
+
+    /* Safe area insets (mobile notch/status bar) */
+    --sat: env(safe-area-inset-top, 0px);
+    --sar: env(safe-area-inset-right, 0px);
+    --sab: env(safe-area-inset-bottom, 0px);
+    --sal: env(safe-area-inset-left, 0px);
 }
 
 * {
@@ -36,10 +42,15 @@ body {
         linear-gradient(135deg, #f5f7fb 0%, #e6edf4 45%, #f7edf1 100%);
     color: var(--text);
     min-height: 100vh;
+    min-height: 100dvh;
     display: flex;
     flex-direction: column;
     line-height: 1.65;
     overflow-x: hidden;
+    padding-top: var(--sat);
+    padding-right: var(--sar);
+    padding-bottom: var(--sab);
+    padding-left: var(--sal);
 }
 
 body::before {

@@ -2,8 +2,13 @@ package com.yousa.app;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.graphics.Color;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.KeyEvent;
+import android.view.View;
+import android.view.WindowInsets;
+import android.view.WindowInsetsController;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
@@ -16,6 +21,18 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // ── Status bar: match website background ──
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            getWindow().setStatusBarColor(Color.parseColor("#EEF3F8")); // var(--bg)
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            // Light icons on light background
+            View decor = getWindow().getDecorView();
+            decor.setSystemUiVisibility(decor.getSystemUiVisibility()
+                | View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
+        }
+
         setContentView(R.layout.activity_main);
 
         webView = findViewById(R.id.webView);
@@ -33,7 +50,7 @@ public class MainActivity extends Activity {
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public void onPageFinished(WebView view, String url) {
-                // Pull-to-refresh via JavaScript swipe detection
+                // Pull-to-refresh via JavaScript swipe
                 view.loadUrl("javascript:(function(){"
                     + "var sY=0;"
                     + "document.addEventListener('touchstart',function(e){"
