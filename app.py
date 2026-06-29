@@ -656,7 +656,7 @@ def register():
     if request.method == "POST":
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "")
-        role = request.form.get("role", "user")
+        role = "user"
         nickname = request.form.get("nickname", "").strip()
 
         if not username or not password:
