@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}画廊 — yousa.ccwu.cc{% endblock %}
+{% block head %}
+<style>
+.gallery-shell { max-width: 1100px; margin: 0 auto; }
+.gallery-header { padding: 1.5rem 2rem; margin-bottom: 1.5rem; }
+.gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1rem; }
+.gallery-item { overflow: hidden; border-radius: var(--radius); transition: transform 0.2s, box-shadow 0.2s; }
+.gallery-item:hover { transform: translateY(-3px); box-shadow: 0 8px 30px rgba(65,83,101,0.2); }
+.gallery-item img { width: 100%; height: 220px; object-fit: cover; display: block; }
+.gallery-caption { padding: 0.6rem 0.8rem; font-size: 0.85rem; }
+.gallery-caption .name { font-weight: 600; color: var(--text); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gallery-caption .meta { color: var(--text-muted); font-size: 0.75rem; }
+.dir-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 0.6rem; margin-bottom: 1.5rem; }
+.dir-item { padding: 0.8rem 1rem; border-radius: var(--radius-sm); display: flex; align-items: center; gap: 0.5rem; font-weight: 500; }
+.gallery-empty { text-align: center; padding: 3rem 1rem; color: var(--text-muted); }
+.breadcrumb { padding: 0.6rem 1.2rem; margin-bottom: 1rem; border-radius: var(--radius-sm); font-size: 0.9rem; }
+.breadcrumb a { color: var(--accent-2); }
+.breadcrumb-sep { margin: 0 0.4rem; color: var(--text-dim); }
+@media (max-width: 640px) {
+  .gallery-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  .gallery-item img { height: 150px; }
+}
+</style>
+{% endblock %}
+{% block content %}
+<section class="gallery-shell">
+    <div class="gallery-header glass-panel">
+        <h1>🖼️ 画廊</h1>
+        <p class="page-desc" style="margin-top:0.3rem">浏览服务器上的图片</p>
+    </div>
+
+    <nav class="breadcrumb glass-panel">
+        <a href="/gallery/">🏠 根目录</a>
+        {% for crumb in breadcrumbs %}
+        <span class="breadcrumb-sep">/</span>
+        <a href="/gallery/{{ crumb.path }}">{{ crumb.name }}</a>
+        {% endfor %}
+    </nav>
+
+    {% if dirs %}
+    <div class="dir-grid">
+        {% for d in dirs %}
+        <a href="/gallery/{{ d.path }}" class="dir-item glass-panel">
+            <span>📁</span>
+            <span>{{ d.name }}</span>
+        </a>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if images %}
+    <div class="gallery-grid">
+        {% for img in images %}
+        <a href="/gallery/{{ img.path }}" class="gallery-item glass-panel" target="_blank">
+            <img src="/gallery/{{ img.path }}" alt="{{ img.name }}" loading="lazy">
+            <div class="gallery-caption">
+                <span class="name">{{ img.name }}</span>
+                <span class="meta">{{ img.size_hr }} · {{ img.modified }}</span>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+    {% elif not dirs %}
+    <div class="gallery-empty glass-panel">
+        <p>📭 暂无图片</p>
+        <p style="font-size:0.85rem;color:var(--text-dim);margin-top:0.5rem">将图片放到 D:\\DeepSeek 目录下即可显示</p>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}

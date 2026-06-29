@@ -1,5 +1,5 @@
 #!/bin/bash
-# yousa.ccwu.cc — SSH 一键部署（本机用）
+# yousa.ccwu.cc — Git 推送（服务器 cron 会自动拉取部署）
 # 用法: bash deploy-ssh.sh ["提交信息"]
 set -e
 
@@ -11,14 +11,4 @@ cd "$APP_DIR"
 git add -A
 git commit -m "$MSG" 2>/dev/null || echo "(无新更改)"
 git push
-
-echo "🚀 SSH 部署到服务器..."
-ssh -i ~/.ssh/aliyun_ecs root@47.76.83.82 '
-  cd /opt/yousa
-  git pull
-  systemctl restart yousa
-  echo "✅ $(date +%T) 部署完成"
-' 2>&1 | grep -v WARNING
-
-echo ""
-echo "✨ 完成！"
+echo "✨ 推送完成，服务器将自动拉取更新"

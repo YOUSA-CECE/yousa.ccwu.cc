@@ -115,6 +115,12 @@ def init_db():
         )
     """)
     db.commit()
+    # Add post_id to messages table for per-post comments (if not exists)
+    try:
+        db.execute("ALTER TABLE messages ADD COLUMN post_id INTEGER DEFAULT NULL")
+        db.commit()
+    except sqlite3.OperationalError:
+        pass  # Column already exists
     # Create default admin if no users exist
     cur = db.execute("SELECT COUNT(*) FROM users")
     if cur.fetchone()[0] == 0:
@@ -783,6 +789,71 @@ def chat():
     return render_template("chat.html")
 
 
+@app.route("/cloud/")
+@app.route("/cloud/<path:subpath>")
+def cloud_drive(subpath=None):
+    """Cloud drive — redirects to file browser."""
+    if subpath:
+        return redirect(url_for("file_browser", subpath=subpath))
+    return redirect(url_for("file_browser"))
+
+
+@app.route("/gallery/")
+@app.route("/gallery/<path:subpath>")
+def gallery(subpath=None):
+    """Gallery — browse images from the files directory."""
+    base = FILE_DIR.resolve()
+    if subpath:
+        target = (base / subpath).resolve()
+    else:
+        target = base
+
+    if not str(target).startswith(str(base)):
+        abort(403)
+    if not target.exists():
+        abort(404)
+
+    if target.is_file():
+        # Serve the image (only image types)
+        ext = target.suffix.lower()
+        if ext in (".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp"):
+            return send_from_directory(target.parent, target.name)
+        abort(404)
+
+    # Collect image files recursively from this directory
+    image_exts = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp"}
+    images = []
+    dirs = []
+    try:
+        for entry in sorted(target.iterdir(), key=lambda p: (p.is_file(), p.name.lower())):
+            if entry.name.startswith("."):
+                continue
+            rel = str(entry.relative_to(base)).replace("\\", "/")
+            if entry.is_dir():
+                dirs.append({"name": entry.name, "path": rel})
+            elif entry.suffix.lower() in image_exts:
+                stat = entry.stat()
+                images.append({
+                    "name": entry.name,
+                    "path": rel,
+                    "size_hr": format_size(stat.st_size),
+                    "modified": datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M"),
+                })
+    except PermissionError:
+        abort(403)
+
+    current_path = subpath.replace("\\", "/") if subpath else ""
+    parts = current_path.split("/") if current_path else []
+    breadcrumbs = []
+    accum = ""
+    for p in parts:
+        accum = f"{accum}/{p}" if accum else p
+        breadcrumbs.append({"name": p, "path": accum})
+
+    return render_template("gallery.html", images=images, dirs=dirs,
+                           current_path=current_path, breadcrumbs=breadcrumbs)
+
+
 @app.route("/chat/api", methods=["POST"])
 def chat_api():
     data = request.get_json()
@@ -1030,7 +1101,41 @@ def blog_post(post_id):
     if not post:
         abort(404)
     html_content = render_markdown(post["content"])
-    return render_template("blog_post.html", post=post, html_content=html_content)
+    # Get comments for this post
+    comments = db.execute("""
+        SELECT id, author_name, content, created_at FROM messages
+        WHERE post_id = ?
+        ORDER BY created_at ASC
+    """, (post_id,)).fetchall()
+    return render_template("blog_post.html", post=post, html_content=html_content,
+                           comments=comments)
+
+
+@app.route("/blog/<int:post_id>/comment", methods=["POST"])
+def blog_post_comment(post_id):
+    db = get_db()
+    post = db.execute("SELECT id FROM posts WHERE id = ?", (post_id,)).fetchone()
+    if not post:
+        abort(404)
+    content = request.form.get("content", "").strip()
+    if not content:
+        flash("评论不能为空", "error")
+        return redirect(url_for("blog_post", post_id=post_id))
+
+    if current_user.is_authenticated:
+        author_name = current_user.nickname
+        user_id = current_user.id
+    else:
+        author_name = request.form.get("name", "游客").strip() or "游客"
+        user_id = None
+
+    db.execute(
+        "INSERT INTO messages (author_name, content, user_id, post_id) VALUES (?, ?, ?, ?)",
+        (author_name, content, user_id, post_id)
+    )
+    db.commit()
+    flash("评论成功！", "success")
+    return redirect(url_for("blog_post", post_id=post_id))
 
 
 @app.route("/blog/<int:post_id>/delete", methods=["POST"])

@@ -18,6 +18,36 @@
     </form>
     {% endif %}
 </article>
+
+{% if comments is defined %}
+<section class="glass-panel" style="max-width:700px;margin:1.5rem auto;padding:1.5rem">
+    <h3 style="margin-bottom:1rem">💬 评论（{{ comments|length }}）</h3>
+    {% if comments %}
+    <div style="display:flex;flex-direction:column;gap:0.8rem;margin-bottom:1.5rem">
+        {% for c in comments %}
+        <div style="padding:0.8rem 1rem;background:var(--panel-strong, rgba(255,255,255,0.76));border-radius:var(--radius-sm)">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.3rem">
+                <strong style="font-size:0.9rem">{{ c.author_name }}</strong>
+                <span style="font-size:0.75rem;color:var(--text-dim)">{{ c.created_at[:16] }}</span>
+            </div>
+            <p style="font-size:0.92rem;margin:0">{{ c.content }}</p>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p style="color:var(--text-muted);margin-bottom:1.2rem">暂无评论，来写第一条吧。</p>
+    {% endif %}
+
+    <form method="post" action="/blog/{{ post.id }}/comment" style="border-top:1px solid var(--border-dark);padding-top:1rem">
+        {% if not current_user.is_authenticated %}
+        <input type="text" name="name" placeholder="你的昵称（可选）" style="width:100%;margin-bottom:0.6rem;padding:0.5rem 0.8rem;border:1px solid var(--border-dark);border-radius:var(--radius-sm);background:rgba(255,255,255,0.5);font-size:0.9rem">
+        {% endif %}
+        <textarea name="content" rows="3" placeholder="写下你的评论…" required style="width:100%;padding:0.6rem 0.8rem;border:1px solid var(--border-dark);border-radius:var(--radius-sm);background:rgba(255,255,255,0.5);font-size:0.9rem;resize:vertical"></textarea>
+        <button type="submit" class="form-btn" style="margin-top:0.6rem">发表评论</button>
+    </form>
+</section>
+{% endif %}
+
 <div style="text-align:center;margin-top:1.5rem">
     <a href="/blog" class="form-btn form-btn-sm">← 返回日志列表</a>
 </div>
