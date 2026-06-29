@@ -150,7 +150,7 @@ public class MainActivity extends Activity {
         cookieManager.setAcceptThirdPartyCookies(webView, true);
         webView.addJavascriptInterface(new AuthBridge(), "YousaApp");
         webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
-        webView.setOverScrollMode(View.OVER_SCROLL_ALWAYS);
+        webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
 
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
@@ -253,10 +253,11 @@ public class MainActivity extends Activity {
         webView.setOnTouchListener((view, event) -> {
             switch (event.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
-                    touchStartY = event.getY();
-                    canPull = !webView.canScrollVertically(-1);
-                    pullGestureActive = false;
-                    break;
+                        touchStartY = event.getY();
+                        canPull = !webView.canScrollVertically(-1);
+                        pullGestureActive = false;
+                        if (canPull) { return true; }
+                        break;
                 case MotionEvent.ACTION_MOVE:
                     float distance = event.getY() - touchStartY;
                     if (canPull && distance > 35f) {

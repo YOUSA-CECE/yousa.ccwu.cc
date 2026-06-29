@@ -105,8 +105,10 @@
     <!-- Upload drop zone -->
     <div class="upload-zone glass-panel" id="upload-zone">
         <p>📤 拖拽文件到此处上传，或点击选择</p>
-        <input type="file" id="file-input" multiple style="display:none" onchange="uploadFiles(this.files)">
-        <button class="form-btn form-btn-sm" onclick="document.getElementById('file-input').click()">选择文件</button>
+        <input type="file" id="file-input" multiple
+               onchange="uploadFiles(this.files)"
+               style="position:absolute;opacity:0;width:1px;height:1px;pointer-events:none">
+        <label for="file-input" class="form-btn form-btn-sm" style="cursor:pointer;display:inline-block">选择文件</label>
         <div style="margin-top:0.6rem;text-align:left">
             <label style="font-size:0.8rem;color:var(--text-muted)">标题（可选）</label>
             <input type="text" id="upload-title" placeholder="文件标题">

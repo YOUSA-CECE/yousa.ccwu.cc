@@ -1,5 +1,16 @@
 {% extends "base.html" %}
 {% block title %}{{ filename }} — 云盘预览{% endblock %}
+{% block head %}
+<style>
+@media (max-width: 640px) {
+    .cloud-comment-section { padding: 0.8rem 1rem !important; }
+    .cloud-comment-section h3 { font-size: 0.9rem !important; margin-bottom: 0.5rem !important; }
+    .cloud-comment-section #comment-text { font-size: 0.82rem !important; padding: 0.35rem 0.5rem !important; }
+    .cloud-comment-section #comment-name { font-size: 0.82rem !important; padding: 0.35rem 0.5rem !important; }
+    .cloud-comment-section .form-btn-sm { font-size: 0.8rem; padding: 0.3rem 0.7rem; }
+}
+</style>
+{% endblock %}
 {% block content %}
 <section style="max-width:900px;margin:0 auto">
     <div class="glass-panel" style="padding:1.2rem 1.5rem;margin-bottom:1.2rem;
@@ -26,7 +37,7 @@
     </div>
 
     <!-- Comments -->
-    <div class="glass-panel" style="padding:1.2rem 1.5rem;margin-top:1rem">
+    <div class="glass-panel cloud-comment-section" style="padding:1.2rem 1.5rem;margin-top:1rem">
         <h3 style="margin-bottom:0.8rem;font-size:1rem">💬 评论</h3>
         <div id="comments-list" style="margin-bottom:0.8rem"></div>
         <form id="comment-form" onsubmit="return postComment(event)" style="border-top:1px solid var(--border-dark);padding-top:0.8rem">
