@@ -1,7 +1,7 @@
 {
-  "versionCode": 5,
-  "versionName": "1.0.4",
-  "apkUrl": "https://yousa.ccwu.cc/static/yousa-android-v1.0.4.apk",
-  "apkSizeBytes": 30473,
-  "changelog": "修复登录和退出后服务器跳转到 HTTP，导致 Android 报 ERR_CLEARTEXT_NOT_PERMITTED 的问题；本站明文链接会自动安全升级为 HTTPS。"
+  "versionCode": 6,
+  "versionName": "1.0.5",
+  "apkUrl": "https://raw.githubusercontent.com/YOUSA-CECE/yousa.ccwu.cc/master/static/yousa-android-v1.0.5.apk",
+  "apkSizeBytes": 31961,
+  "changelog": "新增完整自动更新：启动时同时检查官网和 GitHub，发现新版本后显示版本、大小与更新日志；确认后自动下载，下载完成自动进入安装，首次安装可引导授权后继续。"
 }

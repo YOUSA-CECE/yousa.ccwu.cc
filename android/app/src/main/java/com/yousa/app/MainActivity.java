@@ -48,6 +48,7 @@ public class MainActivity extends Activity {
     private boolean blankPageRetryUsed;
     private boolean refreshing;
     private boolean authNavigationPending;
+    private boolean installPermissionRequested;
     private int authWatchdogToken;
     private long splashStartedAt;
 
@@ -78,6 +79,28 @@ public class MainActivity extends Activity {
         // Always enter through the public home page. Restoring an old protected URL
         // can trigger duplicate login redirects after Android recreates the process.
         webView.loadUrl(APP_URL);
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        installPermissionRequested = false;
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (!ApkDownloadReceiver.hasPendingInstall(this)) return;
+        if (ApkDownloadReceiver.canInstallPackages(this)) {
+            installPermissionRequested = false;
+            ApkDownloadReceiver.installPendingUpdate(this);
+        } else if (!installPermissionRequested) {
+            installPermissionRequested = true;
+            Toast.makeText(this, "请允许安装未知应用，授权后将继续安装更新",
+                Toast.LENGTH_LONG).show();
+            ApkDownloadReceiver.requestInstallPermission(this);
+        }
     }
 
     private void configureSystemBars() {
