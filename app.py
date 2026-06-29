@@ -159,8 +159,22 @@ def init_db():
             "INSERT INTO users (username, password, role, nickname) VALUES (?, ?, ?, ?)",
             ("admin", generate_password_hash("admin123"), "admin", "管理员")
         )
+        db.execute(
+            "INSERT INTO users (username, password, role, nickname) VALUES (?, ?, ?, ?)",
+            ("yousa", generate_password_hash("yousa123"), "admin", "Yousa")
+        )
         db.commit()
-        print("  👤 默认管理员已创建: admin / admin123")
+        print("  👤 管理员已创建: admin / admin123, yousa / yousa123")
+    else:
+        # Ensure yousa admin exists (migration)
+        cur2 = db.execute("SELECT COUNT(*) FROM users WHERE username='yousa'")
+        if cur2.fetchone()[0] == 0:
+            db.execute(
+                "INSERT INTO users (username, password, role, nickname) VALUES (?, ?, ?, ?)",
+                ("yousa", generate_password_hash("yousa123"), "admin", "Yousa")
+            )
+            db.commit()
+            print("  👤 补充管理员: yousa / yousa123")
     db.close()
 
 
