@@ -575,6 +575,8 @@ public class MainActivity extends Activity {
             DownloadManager manager =
                 (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
             long downloadId = manager.enqueue(request);
+            ApkDownloadReceiver.registerWebDownload(
+                this, downloadId, mimeType, fileName);
             Toast.makeText(this,
                 "已加入系统下载（任务 " + downloadId + "）",
                 Toast.LENGTH_SHORT).show();

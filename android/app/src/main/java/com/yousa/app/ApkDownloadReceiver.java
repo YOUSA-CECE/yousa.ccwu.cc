@@ -11,10 +11,14 @@ import android.os.Environment;
 import android.provider.Settings;
 import android.widget.Toast;
 
+import java.net.URLConnection;
+
 public class ApkDownloadReceiver extends BroadcastReceiver {
     private static final String PREFS = "yousa_downloads";
     private static final String UPDATE_DOWNLOAD_ID = "update_download_id";
     private static final String READY_DOWNLOAD_ID = "ready_download_id";
+    private static final String WEB_MIME_PREFIX = "web_download_mime_";
+    private static final String WEB_NAME_PREFIX = "web_download_name_";
     public static final String EXTRA_INSTALL_UPDATE = "install_downloaded_update";
 
     public static long enqueueApkDownload(Context context, String apkUrl, String fileName) {
@@ -42,6 +46,14 @@ public class ApkDownloadReceiver extends BroadcastReceiver {
     public static boolean hasPendingInstall(Context context) {
         return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .getLong(READY_DOWNLOAD_ID, -1) >= 0;
+    }
+
+    public static void registerWebDownload(Context context, long id,
+                                           String mimeType, String fileName) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putString(WEB_MIME_PREFIX + id, mimeType == null ? "" : mimeType)
+            .putString(WEB_NAME_PREFIX + id, fileName == null ? "" : fileName)
+            .apply();
     }
 
     public static boolean canInstallPackages(Context context) {
@@ -91,10 +103,13 @@ public class ApkDownloadReceiver extends BroadcastReceiver {
         long completedId = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1);
         long updateId = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .getLong(UPDATE_DOWNLOAD_ID, -2);
-        if (completedId != updateId) return;
 
         DownloadManager manager =
             (DownloadManager) context.getSystemService(Context.DOWNLOAD_SERVICE);
+        if (completedId != updateId) {
+            openCompletedWebDownload(context, manager, completedId);
+            return;
+        }
         DownloadManager.Query query = new DownloadManager.Query().setFilterById(completedId);
         try (Cursor cursor = manager.query(query)) {
             if (cursor == null || !cursor.moveToFirst()) return;
@@ -124,6 +139,62 @@ public class ApkDownloadReceiver extends BroadcastReceiver {
                     Toast.makeText(context,
                         "下载完成，请打开 yousa 继续安装", Toast.LENGTH_LONG).show();
                 }
+            }
+        }
+    }
+
+    private void openCompletedWebDownload(Context context, DownloadManager manager,
+                                          long completedId) {
+        String mimeKey = WEB_MIME_PREFIX + completedId;
+        String nameKey = WEB_NAME_PREFIX + completedId;
+        String savedMime = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getString(mimeKey, "");
+        String fileName = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getString(nameKey, "");
+        if ((savedMime == null || savedMime.isEmpty())
+            && (fileName == null || fileName.isEmpty())) {
+            return;
+        }
+
+        DownloadManager.Query query = new DownloadManager.Query().setFilterById(completedId);
+        try (Cursor cursor = manager.query(query)) {
+            if (cursor == null || !cursor.moveToFirst()) return;
+            int status = cursor.getInt(
+                cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS));
+            if (status != DownloadManager.STATUS_SUCCESSFUL) {
+                Toast.makeText(context, "文件下载失败，请稍后重试",
+                    Toast.LENGTH_LONG).show();
+                return;
+            }
+
+            String mimeType = cursor.getString(
+                cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_MEDIA_TYPE));
+            if (mimeType == null || mimeType.isEmpty()
+                || "application/octet-stream".equals(mimeType)) {
+                mimeType = savedMime;
+            }
+            if ((mimeType == null || mimeType.isEmpty()) && fileName != null) {
+                mimeType = URLConnection.guessContentTypeFromName(fileName);
+            }
+            if (mimeType == null || mimeType.isEmpty()) mimeType = "*/*";
+
+            Uri contentUri = manager.getUriForDownloadedFile(completedId);
+            if (contentUri == null) return;
+            Intent open = new Intent(Intent.ACTION_VIEW)
+                .setDataAndType(contentUri, mimeType)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            try {
+                context.startActivity(open);
+            } catch (Exception error) {
+                Toast.makeText(context,
+                    "下载完成，请从“下载”目录选择应用打开",
+                    Toast.LENGTH_LONG).show();
+            } finally {
+                context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                    .remove(mimeKey)
+                    .remove(nameKey)
+                    .apply();
             }
         }
     }
