@@ -240,6 +240,7 @@ public class MainActivity extends Activity {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 if (upgradeAppUrlToHttps(view, request.getUrl())) return true;
+                if (isDownloadableUri(request.getUrl())) return false;
                 return openExternalIfNeeded(request.getUrl());
             }
 
@@ -343,6 +344,22 @@ public class MainActivity extends Activity {
             Toast.makeText(this, "无法打开该链接", Toast.LENGTH_SHORT).show();
         }
         return true;
+    }
+
+    private boolean isDownloadableUri(Uri uri) {
+        if (uri == null) return false;
+        String path = uri.getPath();
+        if (path == null) return false;
+        String lowerPath = path.toLowerCase();
+        String[] extensions = {
+            ".apk", ".zip", ".rar", ".7z", ".tar", ".gz",
+            ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".csv",
+            ".mp3", ".mp4", ".txt", ".md", ".json"
+        };
+        for (String extension : extensions) {
+            if (lowerPath.endsWith(extension)) return true;
+        }
+        return false;
     }
 
     private boolean upgradeAppUrlToHttps(WebView view, Uri uri) {
