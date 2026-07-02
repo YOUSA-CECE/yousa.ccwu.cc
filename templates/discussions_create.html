@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}发布讨论 — yousa.ccwu.cc{% endblock %}
+{% block content %}
+<style>
+.create-container { max-width:700px;margin:0 auto; }
+.create-header { text-align:center;padding:1.5rem 1rem;margin-bottom:1.5rem; }
+.create-header h1 { font-size:1.4rem;margin:0 0 .3rem; }
+.create-header p { color:var(--text-muted);font-size:.85rem;margin:0; }
+.create-form { padding:1.5rem 2rem; }
+.create-form label { display:block;font-size:.85rem;color:var(--text);margin-bottom:.25rem;margin-top:1rem;font-weight:500; }
+.create-form label:first-child { margin-top:0; }
+.create-form input[type=text],.create-form textarea { width:100%;padding:.55rem .75rem;border:1px solid var(--border-dark);border-radius:8px;font-size:.9rem;background:var(--bg);color:var(--text);box-sizing:border-box; }
+.create-form textarea { resize:vertical;min-height:250px;font-family:inherit;line-height:1.6; }
+.create-form .hint { font-size:.78rem;color:var(--text-dim);margin-top:.2rem; }
+.create-form .cover-area { border:2px dashed var(--border-dark);border-radius:8px;padding:1.5rem;text-align:center;cursor:pointer;margin-top:.5rem;transition:border-color .2s; }
+.create-form .cover-area:hover,.create-form .cover-area.has-file { border-color:var(--accent); }
+.create-form .cover-area img { max-width:100%;max-height:200px;border-radius:6px;display:none;margin-top:.5rem; }
+.create-form .form-actions { display:flex;gap:.8rem;margin-top:1.5rem;flex-wrap:wrap; }
+.create-form .form-actions button { padding:.55rem 1.5rem;border:none;border-radius:8px;font-size:.9rem;cursor:pointer; }
+@media(max-width:700px){ .create-form{padding:1rem;}
+.create-form textarea{min-height:180px;} }
+</style>
+
+<div class="create-container">
+    <div class="create-header glass-panel">
+        <h1>📝 发布讨论</h1>
+        <p>分享想法、提问、交流心得</p>
+    </div>
+
+    <form class="create-form glass-panel" method="POST" enctype="multipart/form-data">
+        <label>标题</label>
+        <input type="text" name="title" placeholder="用一句话概括你的讨论" required maxlength="100">
+
+        <label>内容</label>
+        <textarea name="content" placeholder="支持 Markdown 格式&#10;&#10;可以用 **加粗**、*斜体*、`代码`、[链接](url) 等" required></textarea>
+        <div class="hint">支持 Markdown 格式</div>
+
+        <label>封面图（可选）</label>
+        <div class="cover-area" id="cover-area" onclick="document.getElementById('cover-input').click()">
+            <p style="margin:0;font-size:2rem">🖼️</p>
+            <p style="margin:.3rem 0 0;font-size:.85rem;color:var(--text-muted)">点击上传封面图片</p>
+            <input type="file" id="cover-input" name="cover" accept="image/*" style="display:none" onchange="previewCover(this)">
+            <img id="cover-preview" src="#" alt="封面预览">
+        </div>
+
+        <label>标签（可选）</label>
+        <input type="text" name="tags" placeholder="用逗号分隔，如：学习,技术,生活">
+        <div class="hint">多个标签用英文逗号分隔</div>
+
+        <div class="form-actions">
+            <button type="submit" style="background:var(--accent);color:#fff">✅ 发布讨论</button>
+            <a href="/discussions" class="form-btn" style="text-decoration:none">取消</a>
+        </div>
+    </form>
+</div>
+
+<script>
+function previewCover(input) {
+    var preview = document.getElementById('cover-preview');
+    var area = document.getElementById('cover-area');
+    if (input.files && input.files[0]) {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            preview.src = e.target.result;
+            preview.style.display = 'block';
+            area.classList.add('has-file');
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+</script>
+{% endblock %}

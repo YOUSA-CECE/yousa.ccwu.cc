@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}讨论 — yousa.ccwu.cc{% endblock %}
+{% block content %}
+<style>
+.discuss-header { text-align:center;padding:1.5rem 1rem;margin-bottom:1.5rem; }
+.discuss-header h1 { font-size:1.6rem;margin:0 0 .3rem; }
+.discuss-header p { color:var(--text-muted);font-size:.9rem;margin:0 0 1rem; }
+.discuss-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1rem;max-width:1100px;margin:0 auto; }
+.discuss-card { border-radius:var(--radius);overflow:hidden;transition:transform .15s,box-shadow .15s;display:flex;flex-direction:column; }
+.discuss-card:hover { transform:translateY(-2px);box-shadow:0 6px 24px rgba(0,0,0,.12); }
+.discuss-card-cover { width:100%;height:180px;object-fit:cover;display:block;background:var(--bg-card); }
+.discuss-card-cover-placeholder { width:100%;height:180px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--accent-2),var(--accent));color:#fff;font-size:2.5rem; }
+.discuss-card-body { padding:1rem 1.1rem;flex:1;display:flex;flex-direction:column; }
+.discuss-card-title { font-size:1.05rem;font-weight:600;margin:0 0 .35rem;line-height:1.4; }
+.discuss-card-title a { color:var(--text);text-decoration:none; }
+.discuss-card-title a:hover { color:var(--accent); }
+.discuss-card-excerpt { color:var(--text-muted);font-size:.82rem;margin:0 0 .6rem;line-height:1.5;flex:1;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical; }
+.discuss-card-meta { display:flex;align-items:center;gap:.6rem;font-size:.78rem;color:var(--text-dim);flex-wrap:wrap; }
+.discuss-card-meta .author { font-weight:500;color:var(--text); }
+.discuss-card-meta .tag { background:var(--bg-card);padding:.1rem .45rem;border-radius:4px;font-size:.72rem; }
+.discuss-empty { text-align:center;padding:3rem 1rem;color:var(--text-muted); }
+.pagination { display:flex;justify-content:center;gap:.5rem;margin-top:2rem;flex-wrap:wrap; }
+.pagination a,.pagination span { padding:.35rem .7rem;border-radius:6px;font-size:.85rem;text-decoration:none; }
+.pagination a { background:var(--bg-card);color:var(--text); }
+.pagination a:hover { background:var(--accent);color:#fff; }
+.pagination .active { background:var(--accent);color:#fff; }
+@media(max-width:700px){ .discuss-grid{grid-template-columns:1fr;}
+.discuss-card-cover,.discuss-card-cover-placeholder{height:140px;} }
+</style>
+
+<section class="discuss-header glass-panel">
+    <h1>💬 讨论</h1>
+    <p>分享想法、提问交流、一起讨论</p>
+    {% if current_user.is_authenticated %}
+    <a href="/discussions/new" class="form-btn" style="background:var(--accent);color:#fff">📝 发布讨论</a>
+    {% else %}
+    <a href="/login" class="form-btn">登录后发布讨论</a>
+    {% endif %}
+</section>
+
+{% if threads %}
+<div class="discuss-grid">
+    {% for t in threads %}
+    <div class="discuss-card glass-panel">
+        <a href="/discussions/{{ t.id }}">
+            {% if t.cover_image %}
+            <img class="discuss-card-cover" src="/{{ t.cover_image }}" alt="{{ t.title }}" loading="lazy">
+            {% else %}
+            <div class="discuss-card-cover-placeholder">💬</div>
+            {% endif %}
+        </a>
+        <div class="discuss-card-body">
+            <h3 class="discuss-card-title"><a href="/discussions/{{ t.id }}">{{ t.title }}</a></h3>
+            <p class="discuss-card-excerpt">{{ t.content[:150] }}{% if t.content|length>150 %}…{% endif %}</p>
+            <div class="discuss-card-meta">
+                <span class="author">{{ t.author_name or '匿名' }}</span>
+                <span>·</span>
+                <span>{{ t.created_at[:10] }}</span>
+                <span>👁️ {{ t.view_count }}</span>
+                <span>💬 {{ t.real_comment_count or t.comment_count }}</span>
+                {% if t.is_pinned %}<span class="tag">📌 置顶</span>{% endif %}
+                {% for tag in (t.tags or '').split(',')[:2] %}
+                {% if tag %}<span class="tag">{{ tag }}</span>{% endif %}
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="pagination">
+    {% if page > 1 %}<a href="/discussions?page={{ page-1 }}">← 上一页</a>{% endif %}
+    {% for p in range(1, total_pages + 1) %}
+        {% if p == page %}<span class="active">{{ p }}</span>
+        {% elif p == 1 or p == total_pages or (p >= page-2 and p <= page+2) %}<a href="/discussions?page={{ p }}">{{ p }}</a>
+        {% elif p == page-3 or p == page+3 %}<span>…</span>{% endif %}
+    {% endfor %}
+    {% if page < total_pages %}<a href="/discussions?page={{ page+1 }}">下一页 →</a>{% endif %}
+</div>
+{% else %}
+<div class="discuss-empty glass-panel">
+    <p style="font-size:3rem;margin:0 0 .5rem">💬</p>
+    <p>还没有讨论，快来发布第一条吧！</p>
+</div>
+{% endif %}
+{% endblock %}

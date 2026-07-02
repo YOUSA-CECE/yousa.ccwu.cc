@@ -138,6 +138,38 @@ def init_db():
             FOREIGN KEY (user_id) REFERENCES users(id)
         )
     """)
+    # Discussions table
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS discussions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            content TEXT NOT NULL,
+            cover_image TEXT DEFAULT '',
+            author_id INTEGER NOT NULL,
+            tags TEXT DEFAULT '',
+            view_count INTEGER DEFAULT 0,
+            comment_count INTEGER DEFAULT 0,
+            is_pinned INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT (datetime('now')),
+            updated_at TEXT DEFAULT (datetime('now')),
+            FOREIGN KEY (author_id) REFERENCES users(id)
+        )
+    """)
+    # Discussion comments table
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS discussion_comments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            discussion_id INTEGER NOT NULL,
+            parent_id INTEGER DEFAULT NULL,
+            author_name TEXT NOT NULL,
+            content TEXT NOT NULL,
+            user_id INTEGER,
+            created_at TEXT DEFAULT (datetime('now')),
+            FOREIGN KEY (discussion_id) REFERENCES discussions(id),
+            FOREIGN KEY (parent_id) REFERENCES discussion_comments(id),
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+    ")
     # Upload metadata table (gallery + cloud drive)
     db.execute("""
         CREATE TABLE IF NOT EXISTS upload_meta (
@@ -1672,6 +1704,142 @@ def blog_delete(post_id):
     db.commit()
     flash("日志已删除", "success")
     return redirect(url_for("blog_list"))
+
+
+# ── Discussions Routes ────────────────────────────────────────────────
+
+DISCUSS_UPLOAD_DIR = BASE_DIR / "static" / "discussions"
+DISCUSS_UPLOAD_DIR.mkdir(exist_ok=True)
+
+@app.route("/discussions")
+def discussions_list():
+    db = get_db()
+    page = request.args.get("page", 1, type=int)
+    per_page = 12
+    offset = (page - 1) * per_page
+    total = db.execute("SELECT COUNT(*) as c FROM discussions").fetchone()["c"]
+    threads = db.execute("""
+        SELECT d.*, u.nickname as author_name,
+               (SELECT COUNT(*) FROM discussion_comments WHERE discussion_id = d.id) as real_comment_count
+        FROM discussions d
+        LEFT JOIN users u ON d.author_id = u.id
+        ORDER BY d.is_pinned DESC, d.created_at DESC
+        LIMIT ? OFFSET ?
+    """, (per_page, offset)).fetchall()
+    total_pages = max(1, (total + per_page - 1) // per_page)
+    return render_template("discussions_list.html", threads=threads,
+                           page=page, total_pages=total_pages, total=total)
+
+
+@app.route("/discussions/new", methods=["GET", "POST"])
+@login_required
+def discussions_create():
+    if request.method == "POST":
+        title = request.form.get("title", "").strip()
+        content = request.form.get("content", "").strip()
+        tags = request.form.get("tags", "").strip()
+        if not title or not content:
+            flash("标题和内容不能为空", "error")
+            return render_template("discussions_create.html")
+        cover_image = ""
+        if "cover" in request.files:
+            f = request.files["cover"]
+            if f and f.filename:
+                ext = Path(f.filename).suffix.lower()
+                if ext in (".png", ".jpg", ".jpeg", ".gif", ".webp"):
+                    import uuid
+                    name = f"cover_{uuid.uuid4().hex[:8]}{ext}"
+                    f.save(str(DISCUSS_UPLOAD_DIR / name))
+                    cover_image = f"static/discussions/{name}"
+        db = get_db()
+        db.execute(
+            "INSERT INTO discussions (title, content, cover_image, author_id, tags) VALUES (?, ?, ?, ?, ?)",
+            (title, content, cover_image, current_user.id, tags)
+        )
+        db.commit()
+        thread_id = db.execute("SELECT last_insert_rowid()").fetchone()[0]
+        flash("讨论发布成功！", "success")
+        return redirect(url_for("discussions_detail", thread_id=thread_id))
+    return render_template("discussions_create.html")
+
+
+@app.route("/discussions/<int:thread_id>")
+def discussions_detail(thread_id):
+    db = get_db()
+    db.execute("UPDATE discussions SET view_count = view_count + 1 WHERE id = ?", (thread_id,))
+    db.commit()
+    thread = db.execute("""
+        SELECT d.*, u.nickname as author_name FROM discussions d
+        LEFT JOIN users u ON d.author_id = u.id WHERE d.id = ?
+    """, (thread_id,)).fetchone()
+    if not thread:
+        abort(404)
+    html_content = render_markdown(thread["content"])
+    comments = db.execute("""
+        SELECT c.*, u.nickname as author_name FROM discussion_comments c
+        LEFT JOIN users u ON c.user_id = u.id
+        WHERE c.discussion_id = ? ORDER BY c.created_at ASC
+    """, (thread_id,)).fetchall()
+    return render_template("discussions_detail.html", thread=thread,
+                           html_content=html_content, comments=comments)
+
+
+@app.route("/discussions/<int:thread_id>/comment", methods=["POST"])
+def discussions_comment(thread_id):
+    db = get_db()
+    thread = db.execute("SELECT id FROM discussions WHERE id = ?", (thread_id,)).fetchone()
+    if not thread:
+        abort(404)
+    content = request.form.get("content", "").strip()
+    if not content:
+        flash("评论不能为空", "error")
+        return redirect(url_for("discussions_detail", thread_id=thread_id))
+    parent_id = request.form.get("parent_id", type=int)
+    if current_user.is_authenticated:
+        author_name = current_user.nickname
+        user_id = current_user.id
+    else:
+        author_name = request.form.get("name", "游客").strip() or "游客"
+        user_id = None
+    db.execute(
+        "INSERT INTO discussion_comments (discussion_id, parent_id, author_name, content, user_id) VALUES (?, ?, ?, ?, ?)",
+        (thread_id, parent_id, author_name, content, user_id)
+    )
+    db.execute("UPDATE discussions SET comment_count = (SELECT COUNT(*) FROM discussion_comments WHERE discussion_id = ?) WHERE id = ?",
+               (thread_id, thread_id))
+    db.commit()
+    flash("评论成功！", "success")
+    return redirect(url_for("discussions_detail", thread_id=thread_id))
+
+
+@app.route("/discussions/<int:thread_id>/delete", methods=["POST"])
+@login_required
+def discussions_delete(thread_id):
+    db = get_db()
+    thread = db.execute("SELECT * FROM discussions WHERE id = ?", (thread_id,)).fetchone()
+    if not thread:
+        abort(404)
+    if not current_user.is_admin and thread["author_id"] != current_user.id:
+        abort(403)
+    db.execute("DELETE FROM discussion_comments WHERE discussion_id = ?", (thread_id,))
+    db.execute("DELETE FROM discussions WHERE id = ?", (thread_id,))
+    db.commit()
+    flash("讨论已删除", "success")
+    return redirect(url_for("discussions_list"))
+
+
+@app.route("/discussions/<int:thread_id>/comment/delete/<int:comment_id>", methods=["POST"])
+@login_required
+def discussions_comment_delete(thread_id, comment_id):
+    if not current_user.is_admin:
+        abort(403)
+    db = get_db()
+    db.execute("DELETE FROM discussion_comments WHERE id = ? AND discussion_id = ?", (comment_id, thread_id))
+    db.execute("UPDATE discussions SET comment_count = (SELECT COUNT(*) FROM discussion_comments WHERE discussion_id = ?) WHERE id = ?",
+               (thread_id, thread_id))
+    db.commit()
+    flash("评论已删除", "success")
+    return redirect(url_for("discussions_detail", thread_id=thread_id))
 
 
 # ── Generic Comment API ─────────────────────────────────────────────
