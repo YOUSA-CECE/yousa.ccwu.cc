@@ -1369,7 +1369,7 @@ def chat_api():
     )
     if not API_KEY:
         return jsonify({"reply": "🔑 小狗的 API 密钥还没配置好，请管理员在服务器上设置 LONGCAT_API_KEY 环境变量或创建 .apikey 文件。 汪"})
-    MODEL = "LongCat-2.0-Preview"
+    MODEL = "LongCat-2.0"
 
     # Load soul.md system prompt
     soul_path = BASE_DIR / "soul.md"
