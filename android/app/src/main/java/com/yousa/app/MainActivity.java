@@ -4,7 +4,9 @@ import android.annotation.SuppressLint;
 import android.Manifest;
 import android.app.Activity;
 import android.app.DownloadManager;
+import android.content.ClipData;
 import android.content.Intent;
+import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.net.Uri;
@@ -34,7 +36,8 @@ public class MainActivity extends Activity {
 
     private static final String APP_URL = "https://yousa.ccwu.cc";
     private static final String APP_HOST = "yousa.ccwu.cc";
-    private static final float REFRESH_DISTANCE_DP = 96f;
+    private static final float REFRESH_DISTANCE_DP = 64f;
+    private static final float PULL_START_DISTANCE_DP = 12f;
     private static final int REQUEST_STORAGE_PERMISSION = 701;
     private static final int REQUEST_FILE_CHOOSER = 702;
 
@@ -59,6 +62,7 @@ public class MainActivity extends Activity {
     private int authWatchdogToken;
     private long splashStartedAt;
     private float refreshDistance;
+    private float pullStartDistance;
     private PendingDownload pendingDownload;
     private ValueCallback<Uri[]> fileChooserCallback;
 
@@ -68,6 +72,8 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         splashStartedAt = System.currentTimeMillis();
         refreshDistance = REFRESH_DISTANCE_DP
+            * getResources().getDisplayMetrics().density;
+        pullStartDistance = PULL_START_DISTANCE_DP
             * getResources().getDisplayMetrics().density;
         configureSystemBars();
         setContentView(R.layout.activity_main);
@@ -128,6 +134,9 @@ public class MainActivity extends Activity {
 
     @SuppressLint({"SetJavaScriptEnabled", "ClickableViewAccessibility"})
     private void configureWebView() {
+        if ((getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
+            WebView.setWebContentsDebuggingEnabled(true);
+        }
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
@@ -156,7 +165,8 @@ public class MainActivity extends Activity {
             @Override
             public void onProgressChanged(WebView view, int progress) {
                 pageProgress.setProgress(progress);
-                pageProgress.setVisibility(progress < 100 ? View.VISIBLE : View.GONE);
+                pageProgress.setVisibility(
+                    !refreshing && progress < 100 ? View.VISIBLE : View.GONE);
             }
 
             @Override
@@ -168,8 +178,17 @@ public class MainActivity extends Activity {
                 }
                 fileChooserCallback = callback;
                 try {
-                    Intent picker = params.createIntent();
+                    Intent picker = new Intent(Intent.ACTION_OPEN_DOCUMENT);
                     picker.addCategory(Intent.CATEGORY_OPENABLE);
+                    String[] acceptedTypes = params.getAcceptTypes();
+                    String mimeType = "*/*";
+                    if (acceptedTypes != null && acceptedTypes.length == 1
+                        && acceptedTypes[0] != null && !acceptedTypes[0].isEmpty()) {
+                        mimeType = acceptedTypes[0];
+                    } else if (acceptedTypes != null && acceptedTypes.length > 1) {
+                        picker.putExtra(Intent.EXTRA_MIME_TYPES, acceptedTypes);
+                    }
+                    picker.setType(mimeType);
                     picker.putExtra(Intent.EXTRA_ALLOW_MULTIPLE,
                         params.getMode() == FileChooserParams.MODE_OPEN_MULTIPLE);
                     startActivityForResult(picker, REQUEST_FILE_CHOOSER);
@@ -209,6 +228,7 @@ public class MainActivity extends Activity {
                 animatePageIn();
                 dismissSplash();
                 injectAuthHooks(view, url);
+                schedulePagePrefetch(view, url);
                 if (authNavigationPending && isHome(url)) {
                     authNavigationPending = false;
                     authWatchdogToken++;
@@ -259,7 +279,7 @@ public class MainActivity extends Activity {
                     break;
                 case MotionEvent.ACTION_MOVE:
                     float distance = event.getY() - touchStartY;
-                    if (canPull && distance > 35f) {
+                    if (canPull && distance > pullStartDistance) {
                         pullGestureActive = true;
                         pullHint.setText(distance >= refreshDistance
                             ? R.string.release_to_refresh : R.string.pull_to_refresh);
@@ -278,6 +298,7 @@ public class MainActivity extends Activity {
                     boolean handledPull = pullGestureActive;
                     if (canPull && releasedDistance >= refreshDistance) {
                         refreshing = true;
+                        pageProgress.setVisibility(View.GONE);
                         pullHint.setText(R.string.refreshing);
                         refreshLogo.setVisibility(View.GONE);
                         refreshSpinner.setVisibility(View.VISIBLE);
@@ -301,7 +322,18 @@ public class MainActivity extends Activity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode != REQUEST_FILE_CHOOSER || fileChooserCallback == null) return;
-        Uri[] result = WebChromeClient.FileChooserParams.parseResult(resultCode, data);
+        Uri[] result = null;
+        if (resultCode == RESULT_OK && data != null) {
+            ClipData clipData = data.getClipData();
+            if (clipData != null) {
+                result = new Uri[clipData.getItemCount()];
+                for (int i = 0; i < clipData.getItemCount(); i++) {
+                    result[i] = clipData.getItemAt(i).getUri();
+                }
+            } else if (data.getData() != null) {
+                result = new Uri[]{data.getData()};
+            }
+        }
         fileChooserCallback.onReceiveValue(result);
         fileChooserCallback = null;
     }
@@ -394,6 +426,32 @@ public class MainActivity extends Activity {
                 + "if(a&&new URL(a.href,location.href).pathname==='/logout'&&window.YousaApp)"
                 + "window.YousaApp.onAuthSubmit();},true);"
                 + "})();", null);
+    }
+
+    private void schedulePagePrefetch(WebView view, String url) {
+        Uri pageUri = Uri.parse(url);
+        if (!APP_HOST.equalsIgnoreCase(pageUri.getHost())) return;
+        view.postDelayed(() -> {
+            if (view != webView || !url.equals(view.getUrl())) return;
+            view.evaluateJavascript(
+                "(function(){"
+                    + "if(window.__yousaPrefetched)return;"
+                    + "window.__yousaPrefetched=true;"
+                    + "var blocked=/\\/(?:logout|admin|download)(?:\\/|$)/;"
+                    + "var seen={};var count=0;"
+                    + "Array.prototype.forEach.call(document.querySelectorAll('a[href]'),"
+                    + "function(a){"
+                    + "if(count>=10)return;"
+                    + "var u;try{u=new URL(a.href,location.href);}catch(e){return;}"
+                    + "if(u.origin!==location.origin||u.href===location.href"
+                    + "||u.hash||blocked.test(u.pathname))return;"
+                    + "var key=u.pathname+u.search;if(seen[key])return;seen[key]=1;"
+                    + "var link=document.createElement('link');"
+                    + "link.rel='prefetch';link.href=u.href;link.as='document';"
+                    + "document.head.appendChild(link);count++;"
+                    + "});"
+                    + "})();", null);
+        }, 700);
     }
 
     private void beginAuthNavigation() {

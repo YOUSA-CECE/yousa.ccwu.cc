@@ -53,11 +53,13 @@ SAFE_CACHE_PATHS = {"/", "/wiki/", "/blog", "/about", "/app", "/download", "/gue
 SAFE_CACHE_ENDPOINTS = {
     "home", "wiki_view", "wiki_search", "blog_list", "blog_post",
     "about", "app_download", "guestbook", "chat", "site_search",
+    "gallery", "cloud_drive", "cloud_preview",
 }
 CACHE_INVALIDATING_ENDPOINTS = {
     "login", "logout", "register", "delete_user", "change_role",
     "update_nickname", "change_password", "blog_write", "blog_delete",
-    "guestbook", "guestbook_delete",
+    "guestbook", "guestbook_delete", "gallery_upload",
+    "cloud_upload", "cloud_delete", "cloud_mkdir",
 }
 ACTIVITY_COLUMNS = {
     "last_seen_at": "TEXT",
@@ -358,6 +360,18 @@ def apply_cache_policy(response):
             response.headers["Cache-Control"] = "public, max-age=3600, immutable"
         else:
             response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+    elif (
+        request.method == "GET"
+        and request.endpoint == "gallery"
+        and response.status_code == 200
+        and response.mimetype.startswith("image/")
+    ):
+        response.headers["Cache-Control"] = "private, max-age=3600"
+        response.headers["Vary"] = "Cookie"
+        response.headers["X-Yousa-Cache"] = "gallery-image"
+        if "ETag" not in response.headers:
+            response.add_etag()
+        response.make_conditional(request)
     elif is_safe_page:
         response.headers["Cache-Control"] = (
             "private, max-age=180, stale-while-revalidate=900"
@@ -1157,6 +1171,21 @@ def gallery(subpath=None):
         # Serve the image (only image types)
         ext = target.suffix.lower()
         if ext in (".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp"):
+            rel = str(target.relative_to(base)).replace("\\", "/")
+            meta = get_db().execute(
+                "SELECT visibility, uploaded_by FROM upload_meta "
+                "WHERE type='gallery' AND filepath=? ORDER BY id DESC LIMIT 1",
+                (rel,),
+            ).fetchone()
+            if (
+                meta
+                and (meta["visibility"] or "public") == "private"
+                and not (
+                    current_user.is_authenticated
+                    and (current_user.is_admin or meta["uploaded_by"] == current_user.id)
+                )
+            ):
+                abort(404)
             return send_from_directory(target.parent, target.name)
         abort(404)
 
@@ -1167,7 +1196,8 @@ def gallery(subpath=None):
     # Load upload metadata from DB (include visibility)
     db = get_db()
     meta_rows = db.execute(
-        "SELECT m.filepath, m.title, m.notes, m.visibility, m.created_at, u.nickname AS uploaded_by_name "
+        "SELECT m.filepath, m.title, m.notes, m.visibility, m.created_at, "
+        "m.uploaded_by AS uploaded_by_id, u.nickname AS uploaded_by_name "
         "FROM upload_meta m "
         "LEFT JOIN users u ON m.uploaded_by = u.id "
         "WHERE m.type='gallery' ORDER BY m.created_at DESC"
@@ -1176,6 +1206,7 @@ def gallery(subpath=None):
         "title": row["title"], "notes": row["notes"],
         "visibility": row["visibility"] or "public",
         "uploaded_by": row["uploaded_by_name"] or "未知",
+        "uploaded_by_id": row["uploaded_by_id"],
         "created_at": row["created_at"]
     } for row in meta_rows}
     try:
@@ -1189,7 +1220,10 @@ def gallery(subpath=None):
                 # Filter by visibility
                 meta = metadata.get(rel, {})
                 vis = meta.get("visibility", "public")
-                if vis == "private" and not (current_user.is_authenticated and current_user.is_admin):
+                if vis == "private" and not (
+                    current_user.is_authenticated
+                    and (current_user.is_admin or meta.get("uploaded_by_id") == current_user.id)
+                ):
                     continue
                 stat = entry.stat()
                 images.append({
@@ -1223,7 +1257,6 @@ GALLERY_UPLOAD_DIR.mkdir(exist_ok=True)
 
 @app.route("/gallery/upload", methods=["POST"])
 @login_required
-@admin_required
 def gallery_upload():
     """Upload images to gallery with title and notes."""
     if "file" not in request.files:
