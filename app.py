@@ -851,13 +851,14 @@ def admin_exec():
     try:
         r = subprocess.run(
             ["bash", "-c", cmd],
-            capture_output=True, text=True, timeout=30,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            timeout=30,
             cwd="/opt/yousa"
         )
         return {
             "ok": True,
-            "stdout": r.stdout,
-            "stderr": r.stderr,
+            "stdout": r.stdout.decode("utf-8", errors="replace") if r.stdout else "",
+            "stderr": r.stderr.decode("utf-8", errors="replace") if r.stderr else "",
             "exit_code": r.returncode,
         }
     except subprocess.TimeoutExpired:
