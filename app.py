@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""yousa.dev — Personal website with auth (admin/user/guest)."""
+# yousa.dev — Personal website with auth (admin/user/guest).
 
 import os
 import re
@@ -37,7 +37,7 @@ except ImportError:
         from datetime import timezone, timedelta
         _HK_TZ = timezone(timedelta(hours=8))
         class ZoneInfo:
-            """Fallback ZoneInfo for Python < 3.9. Uses fixed UTC+8 (China has no DST)."""
+            # Fallback ZoneInfo for Python < 3.9. Uses fixed UTC+8 (China has no DST).
             _cache = {}
             def __new__(cls, key):
                 if key not in cls._cache:
@@ -90,7 +90,7 @@ login_manager.login_message = None
 # ── Database ────────────────────────────────────────────────────────
 
 def get_db():
-    """Get or create a thread-local DB connection."""
+    # Get or create a thread-local DB connection.
     if "db" not in g:
         g.db = sqlite3.connect(str(DB_PATH))
         g.db.row_factory = sqlite3.Row
@@ -103,7 +103,7 @@ def close_db(exception):
         db.close()
 
 def init_db():
-    """Create tables if they don't exist."""
+    # Create tables if they don't exist.
     db = sqlite3.connect(str(DB_PATH))
     db.execute("""
         CREATE TABLE IF NOT EXISTS users (
@@ -169,7 +169,7 @@ def init_db():
             FOREIGN KEY (parent_id) REFERENCES discussion_comments(id),
             FOREIGN KEY (user_id) REFERENCES users(id)
         )
-    ")
+    """)
     # Upload metadata table (gallery + cloud drive)
     db.execute("""
         CREATE TABLE IF NOT EXISTS upload_meta (
@@ -234,7 +234,7 @@ def init_db():
 
 
 def migrate_user_activity_schema(db=None):
-    """Idempotently add activity columns to an existing users table."""
+    # Idempotently add activity columns to an existing users table.
     owns_connection = db is None
     if owns_connection:
         db = sqlite3.connect(str(DB_PATH))
@@ -257,7 +257,7 @@ def migrate_user_activity_schema(db=None):
 
 
 def ensure_activity_schema():
-    """Run once per process/database path, including WSGI imports."""
+    # Run once per process/database path, including WSGI imports.
     global _activity_schema_path
     db_path = str(DB_PATH.resolve())
     if _activity_schema_path == db_path:
@@ -376,7 +376,7 @@ def track_user_activity():
 
 @app.after_request
 def apply_cache_policy(response):
-    """Cache safe navigation pages privately and keep sensitive responses fresh."""
+    # Cache safe navigation pages privately and keep sensitive responses fresh.
     is_static = request.endpoint == "static"
     is_safe_page = (
         request.method == "GET"
@@ -439,7 +439,7 @@ def apply_cache_policy(response):
 _WIKI_LINK_CACHE = None
 
 def _build_wiki_link_cache():
-    """Build a cache of page name → relative path for [[wikilinks]]."""
+    # Build a cache of page name → relative path for [[wikilinks]].
     cache = {}
     if not WIKI_DIR.exists():
         return cache
@@ -454,7 +454,7 @@ def _build_wiki_link_cache():
     return cache
 
 def resolve_wikilinks(text):
-    """Convert [[PageName]] to <a href="/wiki/path">PageName</a>."""
+    # Convert [[PageName]] to <a href="/wiki/path">PageName</a>.
     global _WIKI_LINK_CACHE
     if _WIKI_LINK_CACHE is None:
         _WIKI_LINK_CACHE = _build_wiki_link_cache()
@@ -790,7 +790,7 @@ def change_role(user_id):
 @app.route("/admin/user/<int:user_id>/nickname", methods=["POST"])
 @admin_required
 def admin_update_nickname(user_id):
-    """Admin updates any user's nickname."""
+    # Admin updates any user's nickname.
     nickname = request.form.get("nickname", "").strip()
     if not nickname:
         flash("昵称不能为空", "error")
@@ -805,7 +805,7 @@ def admin_update_nickname(user_id):
 @app.route("/admin/user/<int:user_id>/password", methods=["POST"])
 @admin_required
 def admin_reset_password(user_id):
-    """Admin resets any user's password."""
+    # Admin resets any user's password.
     new_password = request.form.get("new_password", "")
     if len(new_password) < 4:
         flash("密码至少 4 位", "error")
@@ -994,7 +994,7 @@ def chat():
 @app.route("/cloud/<path:subpath>")
 @login_required
 def cloud_drive(subpath=None):
-    """Cloud drive — file manager with search and filter."""
+    # Cloud drive — file manager with search and filter.
     base = FILE_DIR.resolve()
     if subpath:
         target = (base / subpath).resolve()
@@ -1081,7 +1081,7 @@ ALLOWED_UPLOAD_EXTS = {
 @login_required
 @admin_required
 def cloud_upload():
-    """Upload files to the cloud drive."""
+    # Upload files to the cloud drive.
     subpath = request.form.get("path", "").strip()
     base = FILE_DIR.resolve()
     target = (base / subpath).resolve() if subpath else base
@@ -1130,7 +1130,7 @@ def cloud_upload():
 @login_required
 @admin_required
 def cloud_delete():
-    """Delete a file or empty directory from cloud drive."""
+    # Delete a file or empty directory from cloud drive.
     path = request.form.get("path", "").strip()
     if not path:
         return jsonify({"error": "参数缺失"}), 400
@@ -1158,7 +1158,7 @@ def cloud_delete():
 @login_required
 @admin_required
 def cloud_mkdir():
-    """Create a new directory in the cloud drive."""
+    # Create a new directory in the cloud drive.
     subpath = request.form.get("path", "").strip()
     name = request.form.get("name", "").strip()
     if not name:
@@ -1181,7 +1181,7 @@ def cloud_mkdir():
 @app.route("/cloud/preview/<path:filepath>")
 @login_required
 def cloud_preview(filepath):
-    """Preview a text/markdown file inline."""
+    # Preview a text/markdown file inline.
     base = FILE_DIR.resolve()
     target = (base / filepath).resolve()
 
@@ -1227,7 +1227,7 @@ def cloud_preview(filepath):
 @app.route("/gallery/")
 @app.route("/gallery/<path:subpath>")
 def gallery(subpath=None):
-    """Gallery — browse images from the 图片 folder."""
+    # Gallery — browse images from the 图片 folder.
     base = BASE_DIR
     if subpath:
         target = (base / subpath).resolve()
@@ -1332,7 +1332,7 @@ GALLERY_UPLOAD_DIR.mkdir(exist_ok=True)
 @app.route("/gallery/upload", methods=["POST"])
 @login_required
 def gallery_upload():
-    """Upload images to gallery with title and notes."""
+    # Upload images to gallery with title and notes.
     if "file" not in request.files:
         return jsonify({"error": "未选择文件"}), 400
 
@@ -1453,7 +1453,7 @@ def chat_api():
 
 
 def build_file_context(user_msg):
-    """If user mentions files/downloads, build a context block with matching files."""
+    # If user mentions files/downloads, build a context block with matching files.
     file_keywords = ["下载", "文件", "资料", "作业", "复习", "笔记", "文档",
                      "download", "file", "doc", "pdf", ".md", ".docx", "纳米"]
     msg_lower = user_msg.lower()
@@ -1846,7 +1846,7 @@ def discussions_comment_delete(thread_id, comment_id):
 
 @app.route("/api/comment/<target_type>/<target_id>", methods=["GET", "POST"])
 def api_comment(target_type, target_id):
-    """Generic comment endpoint for any target (gallery, cloud, guestbook, blog)."""
+    # Generic comment endpoint for any target (gallery, cloud, guestbook, blog).
     if request.method == "POST":
         content = request.form.get("content", "").strip()
         if not content:
