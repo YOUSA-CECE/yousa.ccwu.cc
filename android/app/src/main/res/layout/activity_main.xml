@@ -10,16 +10,6 @@
         android:layout_height="match_parent"
         android:background="#EEF3F8" />
 
-    <ProgressBar
-        android:id="@+id/pageProgress"
-        style="?android:attr/progressBarStyleHorizontal"
-        android:layout_width="match_parent"
-        android:layout_height="3dp"
-        android:layout_gravity="top"
-        android:max="100"
-        android:progressTint="#D76692"
-        android:visibility="gone" />
-
     <LinearLayout
         android:id="@+id/refreshIndicator"
         android:layout_width="wrap_content"

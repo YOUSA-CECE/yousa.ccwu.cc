@@ -42,7 +42,6 @@ public class MainActivity extends Activity {
     private static final int REQUEST_FILE_CHOOSER = 702;
 
     private WebView webView;
-    private ProgressBar pageProgress;
     private View splashPanel;
     private View errorPanel;
     private TextView errorMessage;
@@ -79,7 +78,6 @@ public class MainActivity extends Activity {
         setContentView(R.layout.activity_main);
 
         webView = findViewById(R.id.webView);
-        pageProgress = findViewById(R.id.pageProgress);
         splashPanel = findViewById(R.id.splashPanel);
         errorPanel = findViewById(R.id.errorPanel);
         errorMessage = findViewById(R.id.errorMessage);
@@ -162,13 +160,6 @@ public class MainActivity extends Activity {
         webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
 
         webView.setWebChromeClient(new WebChromeClient() {
-            @Override
-            public void onProgressChanged(WebView view, int progress) {
-                pageProgress.setProgress(progress);
-                pageProgress.setVisibility(
-                    !refreshing && progress < 100 ? View.VISIBLE : View.GONE);
-            }
-
             @Override
             public boolean onShowFileChooser(WebView view,
                                              ValueCallback<Uri[]> callback,
@@ -298,7 +289,6 @@ public class MainActivity extends Activity {
                     boolean handledPull = pullGestureActive;
                     if (canPull && releasedDistance >= refreshDistance) {
                         refreshing = true;
-                        pageProgress.setVisibility(View.GONE);
                         pullHint.setText(R.string.refreshing);
                         refreshLogo.setVisibility(View.GONE);
                         refreshSpinner.setVisibility(View.VISIBLE);
@@ -510,7 +500,6 @@ public class MainActivity extends Activity {
 
     private void showLoadError(String detail) {
         dismissSplash();
-        pageProgress.setVisibility(View.GONE);
         errorMessage.setText(detail == null || detail.trim().isEmpty()
             ? getString(R.string.check_network)
             : detail + "\n\n" + getString(R.string.check_network));
