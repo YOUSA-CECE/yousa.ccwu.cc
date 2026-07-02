@@ -1,7 +1,7 @@
 {
-  "versionCode": 16,
-  "versionName": "1.1.4",
-  "apkUrl": "https://raw.githubusercontent.com/YOUSA-CECE/yousa.ccwu.cc/master/static/yousa-android-v1.1.4.apk",
-  "apkSizeBytes": 40805,
-  "changelog": "网盘文件下载完成后自动调用系统查看器，可直接打开图片、PDF、文档及音视频；无对应应用时保留文件并提示从下载目录打开。"
+  "versionCode": 13,
+  "versionName": "1.1.1",
+  "apkUrl": "https://yousa.ccwu.cc/static/yousa-android-v1.1.1.apk",
+  "apkSizeBytes": 62565,
+  "changelog": "加入常用页面 HTML、画廊图片短时缓存与站内页面预取，提升页面切换速度；彻底移除页面切换顶部红色进度条；优化下拉刷新；修复图片和文件选择器、自动更新安装链路；优化手机端画廊与评论面板。"
 }
