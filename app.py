@@ -841,10 +841,25 @@ def change_password():
 
 
 @app.route("/admin/exec", methods=["POST"])
-@admin_required
 def admin_exec():
-    """Run a shell command on the server (admin only)."""
-    import shlex, subprocess, textwrap
+    """Run a shell command on the server (admin only).
+
+    Auth methods (either one):
+      1. Admin session cookie (via browser login)
+      2. X-API-Key header matching the key in .apikey
+    """
+    import subprocess
+
+    # Session auth
+    if current_user.is_authenticated and current_user.is_admin:
+        pass  # OK
+    else:
+        # API key auth
+        api_key = request.headers.get("X-API-Key", "")
+        expected = (BASE_DIR / ".apikey").read_text(encoding="utf-8").strip()
+        if api_key != expected:
+            return {"ok": False, "error": "unauthorized"}, 403
+
     cmd = request.form.get("cmd", "").strip()
     if not cmd:
         return {"ok": False, "error": "cmd required"}
