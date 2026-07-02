@@ -71,7 +71,7 @@
 <section class="cloud-shell" id="cloud-shell"
     ondragover="event.preventDefault();if(isAdmin){document.getElementById('upload-zone').classList.add('open');document.getElementById('upload-zone').style.borderColor='var(--accent)';}"
     ondragleave="event.preventDefault();document.getElementById('upload-zone').style.borderColor='var(--border-dark)'"
-    ondrop="if(isAdmin){event.preventDefault();uploadFiles(event.dataTransfer.files);}">
+    ondrop="if(isAdmin){event.preventDefault();pendingFiles=event.dataTransfer.files;document.getElementById('upload-confirm').style.display='inline-block';document.getElementById('upload-zone').classList.add('has-files');}">
     <div class="cloud-header glass-panel">
         <div>
             <h1>☁️ 云盘</h1>
@@ -106,9 +106,10 @@
     <div class="upload-zone glass-panel" id="upload-zone">
         <p>📤 拖拽文件到此处上传，或点击选择</p>
         <input type="file" id="file-input" multiple
-               onchange="uploadFiles(this.files)"
+               onchange="pendingFiles=this.files;document.getElementById('upload-confirm').style.display='inline-block';document.getElementById('upload-zone').classList.add('has-files')"
                style="position:absolute;opacity:0;width:1px;height:1px;pointer-events:none">
         <label for="file-input" class="form-btn form-btn-sm" style="cursor:pointer;display:inline-block">选择文件</label>
+        <button class="form-btn form-btn-sm" id="upload-confirm" style="display:none;background:var(--accent);color:#fff;margin-left:0.5rem" onclick="doUpload()">✅ 确认上传</button>
         <div style="margin-top:0.6rem;text-align:left">
             <label style="font-size:0.8rem;color:var(--text-muted)">标题（可选）</label>
             <input type="text" id="upload-title" placeholder="文件标题">
@@ -194,6 +195,7 @@
 
 <script>
 var currentPath = '{{ current_path }}';
+var pendingFiles = null;
 var isAdmin = {{ 'true' if is_admin else 'false' }};
 
 function toast(msg) {
@@ -215,6 +217,12 @@ function filterFiles(query) {
 function toggleUpload() {
     var zone = document.getElementById('upload-zone');
     zone.classList.toggle('open');
+}
+
+function doUpload() {
+    if (!pendingFiles || !pendingFiles.length) return;
+    uploadFiles(pendingFiles);
+    document.getElementById('upload-confirm').style.display = 'none';
 }
 
 function uploadFiles(files) {

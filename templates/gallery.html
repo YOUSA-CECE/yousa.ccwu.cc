@@ -121,7 +121,7 @@
 <section class="gallery-shell" id="gallery-shell"
     ondragover="event.preventDefault();if(canUpload){document.getElementById('drop-zone').style.borderColor='var(--accent)';document.getElementById('upload-form').classList.add('open');}"
     ondragleave="event.preventDefault();document.getElementById('drop-zone').style.borderColor='var(--border-dark)'"
-    ondrop="if(canUpload){event.preventDefault();var f=event.dataTransfer.files[0];if(f&&f.type.match('image.*')){document.getElementById('upload-file').files=event.dataTransfer.files;document.getElementById('upload-form').classList.add('open');uploadPhoto();}}">
+    ondrop="if(canUpload){event.preventDefault();var f=event.dataTransfer.files[0];if(f&&f.type.match('image.*')){document.getElementById('upload-file').files=event.dataTransfer.files;document.getElementById('upload-form').classList.add('open');document.getElementById('gallery-confirm-btn').style.display='inline-block';}}">
     <div class="gallery-header glass-panel">
         <div class="gallery-heading">
             <h1>🖼️ 画廊</h1>
@@ -148,7 +148,7 @@
             <p style="margin:.25rem 0 0;color:var(--text-muted);font-size:.78rem">支持 JPG、PNG、GIF 和 WebP</p>
         </div>
         <input type="file" id="upload-file" accept="image/png,image/jpeg,image/gif,image/webp" style="display:none"
-               onchange="uploadSelected()">
+               onchange="galleryFilesSelected(this)">
         <label>标题</label>
         <input type="text" id="upload-title" placeholder="照片标题（可选）">
         <label>备注</label>
@@ -162,7 +162,7 @@
                 <input type="radio" name="visibility" value="private"> 🔒 仅自己
             </label>
         </div>
-        <button class="form-btn form-btn-sm gallery-submit" type="button" style="margin-top:0.7rem" onclick="uploadPhoto()">确认上传</button>
+        <button class="form-btn form-btn-sm gallery-submit" type="button" id="gallery-confirm-btn" style="margin-top:0.7rem" onclick="uploadPhoto()">确认上传</button>
         <div id="upload-status" style="margin-top:0.4rem;font-size:0.82rem;color:var(--text-muted)"></div>
     </div>
     {% endif %}
@@ -341,6 +341,10 @@ function uploadSelected() {
     uploadPhoto();
 }
 
+function galleryFilesSelected(input) {
+    document.getElementById('gallery-confirm-btn').style.display = 'inline-block';
+}
+
 function handleDrop(e) {
     e.preventDefault();
     e.stopPropagation();
@@ -350,7 +354,7 @@ function handleDrop(e) {
     if (!file) return;
     if (!file.type.match('image.*')) { alert('请拖入图片文件'); return; }
     document.getElementById('upload-file').files = e.dataTransfer.files;
-    uploadPhoto();
+    document.getElementById('gallery-confirm-btn').style.display = 'inline-block';
 }
 
 function uploadPhoto() {
