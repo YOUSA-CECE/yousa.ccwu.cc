@@ -154,11 +154,54 @@ cd /d/DeepSeek/yousa-android && gradle assembleDebug --no-daemon 2>&1 | tail -5
 - 状态栏颜色: #EEF3F8（浅灰），亮色图标
 - 物理返回键：WebView 回退
 
-### APK 版本信息
+### 安卓 App 版本信息
 - 当前版本: v1.0.0
 - 文件名: `yousa-安卓App_v1.0.0.apk`
 - 网站直链: `/static/yousa-安卓App_v1.0.0.apk`
 - 下载页面: `/app` 和 `/download`
+
+## 远程服务器控制
+
+通过 `POST /admin/exec` 端点远程执行命令（管理员专用）。
+
+### 认证方式
+
+| 方式 | 说明 |
+|------|------|
+| Session cookie | 浏览器登录 admin 后自动携带 |
+| X-API-Key 头 | 值写在 `.apikey` 文件中，无需登录 |
+
+### 使用示例
+
+```bash
+# 用本地脚本（推荐，自动处理认证）
+bash server-cmd.sh "cat /opt/yousa/static/version.json"
+
+# 直接 curl 调用
+API_KEY=$(cat .apikey)
+curl -s -X POST https://yousa.ccwu.cc/admin/exec \
+  -H "X-API-Key: $API_KEY" \
+  --data-urlencode "cmd=systemctl status yousa --no-pager -l"
+```
+
+### 常用命令
+
+```bash
+# 部署最新代码
+bash server-cmd.sh "cd /opt/yousa && git stash && git pull --ff-only && systemctl restart yousa"
+
+# 查看服务状态
+bash server-cmd.sh "systemctl status yousa --no-pager -l"
+
+# 查看日志
+bash server-cmd.sh "journalctl -u yousa -n 30 --no-pager"
+
+# 查看当前版本
+bash server-cmd.sh "cat /opt/yousa/static/version.json | grep versionName"
+
+# 查看文件内容
+bash server-cmd.sh "cat /opt/yousa/app.py | head -50"
+```
 
 ## SSH 连接（阿里云 Workbench）
 - 端口 22 被阿里云 aegis 安全组件拦截，无法直接 SSH
