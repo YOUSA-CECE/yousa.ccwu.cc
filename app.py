@@ -837,6 +837,32 @@ def change_password():
     return render_template("password.html")
 
 
+@app.route("/admin/exec", methods=["POST"])
+@admin_required
+def admin_exec():
+    """Run a shell command on the server (admin only)."""
+    import shlex, subprocess, textwrap
+    cmd = request.form.get("cmd", "").strip()
+    if not cmd:
+        return {"ok": False, "error": "cmd required"}
+    try:
+        r = subprocess.run(
+            ["bash", "-c", cmd],
+            capture_output=True, text=True, timeout=30,
+            cwd="/opt/yousa"
+        )
+        return {
+            "ok": True,
+            "stdout": r.stdout,
+            "stderr": r.stderr,
+            "exit_code": r.returncode,
+        }
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "error": "timeout (30s)"}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
 # ── Regular Routes ──────────────────────────────────────────────────
 
 @app.route("/")
