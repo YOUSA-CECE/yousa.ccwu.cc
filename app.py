@@ -11,7 +11,10 @@ import time
 from pathlib import Path
 from datetime import datetime, timezone
 from functools import wraps
-from zoneinfo import ZoneInfo
+try:
+    from zoneinfo import ZoneInfo
+except ImportError:
+    ZoneInfo = None
 
 import markdown
 from flask import (
