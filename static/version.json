@@ -1,7 +1,7 @@
 {
-  "versionCode": 13,
-  "versionName": "1.1.1",
-  "apkUrl": "https://raw.githubusercontent.com/YOUSA-CECE/yousa.ccwu.cc/master/static/yousa-android-v1.1.1.apk",
-  "apkSizeBytes": 62565,
-  "changelog": "加入常用页面 HTML、画廊图片短时缓存与站内页面预取；彻底移除页面切换顶部红色进度条；修复站外 APK 与常见文件无法进入系统下载的问题；优化下拉刷新、文件选择器、自动更新安装链路及手机端画廊。"
+  "versionCode": 14,
+  "versionName": "1.1.2",
+  "apkUrl": "https://raw.githubusercontent.com/YOUSA-CECE/yousa.ccwu.cc/master/static/yousa-android-v1.1.2.apk",
+  "apkSizeBytes": 39845,
+  "changelog": "新增手机端画廊上传与新版布局；加入页面缓存和站内预取；移除页面切换顶部红色条；修复图片、文件选择与系统下载；完善自动更新安装链路。"
 }
