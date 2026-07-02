@@ -372,9 +372,6 @@ def apply_cache_policy(response):
         response.headers["Cache-Control"] = "private, max-age=3600"
         response.headers["Vary"] = "Cookie"
         response.headers["X-Yousa-Cache"] = "gallery-image"
-        if "ETag" not in response.headers:
-            response.add_etag()
-        response.make_conditional(request)
     elif is_safe_page:
         response.headers["Cache-Control"] = (
             "private, max-age=180, stale-while-revalidate=900"
