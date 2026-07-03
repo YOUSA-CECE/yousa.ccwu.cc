@@ -88,8 +88,6 @@ public class MainActivity extends Activity {
         refreshIndicator.setTranslationY(-100f);
         refreshIndicator.setAlpha(0f);
         findViewById(R.id.retryButton).setOnClickListener(v -> retryCurrentPage());
-        findViewById(R.id.downloadCenterButton).setOnClickListener(v ->
-            startActivity(new Intent(this, DownloadCenterActivity.class)));
 
         configureWebView();
 
@@ -502,6 +500,12 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void onAuthSubmit() {
             runOnUiThread(MainActivity.this::beginAuthNavigation);
+        }
+
+        @JavascriptInterface
+        public void openDownloadCenter() {
+            runOnUiThread(() ->
+                startActivity(new Intent(MainActivity.this, DownloadCenterActivity.class)));
         }
     }
 

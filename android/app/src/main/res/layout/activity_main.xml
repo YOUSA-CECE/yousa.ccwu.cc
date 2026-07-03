@@ -97,17 +97,6 @@
             android:textAllCaps="false" />
     </LinearLayout>
 
-    <Button
-        android:id="@+id/downloadCenterButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom|right"
-        android:layout_margin="16dp"
-        android:elevation="8dp"
-        android:fontFamily="serif"
-        android:text="下载中心"
-        android:textAllCaps="false" />
-
     <LinearLayout
         android:id="@+id/splashPanel"
         android:layout_width="match_parent"

@@ -1,7 +1,7 @@
 {
-  "versionCode": 19,
-  "versionName": "1.1.7",
-  "apkUrl": "https://yousa.ccwu.cc/static/yousa-android-v1.1.7.apk",
-  "apkSizeBytes": 50945,
-  "changelog": "新增下载中心，可实时查看下载百分比、已下载大小、总大小和任务状态；支持打开已完成文件及取消异常任务。"
+  "versionCode": 20,
+  "versionName": "1.1.8",
+  "apkUrl": "https://yousa.ccwu.cc/static/yousa-android-v1.1.8.apk",
+  "apkSizeBytes": 50821,
+  "changelog": "下载中心入口移至云盘页面并仅在安卓 App 中显示；重新设计按钮样式，使其与云盘界面风格统一。"
 }

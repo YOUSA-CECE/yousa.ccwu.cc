@@ -16,6 +16,23 @@
 .cloud-toolbar button { background: var(--accent); color:#fff; border:none;
   border-radius:999px; padding:0.4rem 1rem; font-size:0.82rem; cursor:pointer; transition:opacity 0.2s; }
 .cloud-toolbar button:hover { opacity:0.85; }
+.download-center-btn {
+  display:none; align-items:center; gap:0.45rem; min-height:38px;
+  padding:0.4rem 1rem !important; color:#fff !important;
+  background:linear-gradient(135deg,var(--accent),var(--accent-2)) !important;
+  border:1px solid rgba(255,255,255,0.45) !important;
+  box-shadow:0 5px 14px rgba(77,91,110,0.18);
+  font-family:inherit; font-weight:600; letter-spacing:0.01em;
+  transition:transform 0.18s ease,box-shadow 0.18s ease,opacity 0.18s ease !important;
+}
+.download-center-btn:hover {
+  opacity:1 !important; transform:translateY(-1px);
+  box-shadow:0 7px 18px rgba(77,91,110,0.24);
+}
+.download-center-icon {
+  display:inline-grid; place-items:center; width:20px; height:20px;
+  border-radius:50%; background:rgba(255,255,255,0.2); font-size:0.85rem;
+}
 .cloud-stats { text-align: center; margin-bottom: 1rem; }
 .cloud-stat { display: inline-block; font-size: 0.85rem; color: var(--text-muted); margin: 0 0.8rem; }
 .cloud-stat strong { color: var(--text); }
@@ -82,6 +99,11 @@
                 <input type="search" id="cloud-filter" placeholder="筛选文件名…" oninput="filterFiles(this.value)">
                 <button onclick="document.getElementById('cloud-filter').value='';filterFiles('')">✕</button>
             </div>
+            <button id="download-center-btn" class="download-center-btn"
+                    onclick="YousaApp.openDownloadCenter()">
+                <span class="download-center-icon">↓</span>
+                <span>下载中心</span>
+            </button>
             {% if is_admin %}
             <button onclick="promptMkdir()">📁 新建文件夹</button>
             {% endif %}
@@ -190,6 +212,16 @@
     </div>
     {% endif %}
 </section>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var button = document.getElementById('download-center-btn');
+    if (button && window.YousaApp
+        && typeof window.YousaApp.openDownloadCenter === 'function') {
+        button.style.display = 'inline-flex';
+    }
+});
+</script>
 
 <div class="cloud-toast" id="cloud-toast"></div>
 
