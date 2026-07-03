@@ -1165,7 +1165,9 @@ def cloud_upload_chunk():
 
     chunk = request.files["chunk"]
     part_path = upload_dir / f"{index:08d}.part"
+    write_started = time.perf_counter()
     chunk.save(str(part_path))
+    write_ms = (time.perf_counter() - write_started) * 1000
     part_size = part_path.stat().st_size
     expected = min(
         UPLOAD_PART_SIZE,
@@ -1174,7 +1176,12 @@ def cloud_upload_chunk():
     if part_size > UPLOAD_MAX_PART_SIZE or part_size != expected:
         part_path.unlink(missing_ok=True)
         return jsonify({"error": "分片大小不正确"}), 400
-    return jsonify({"status": "ok", "index": index})
+    response = jsonify({
+        "status": "ok", "index": index,
+        "bytes": part_size, "write_ms": round(write_ms, 2),
+    })
+    response.headers["Server-Timing"] = f"chunk_write;dur={write_ms:.2f}"
+    return response
 
 
 @app.route("/cloud/upload/complete", methods=["POST"])
@@ -1196,6 +1203,7 @@ def cloud_upload_complete():
     dest = target / manifest["name"]
     assembling = target / f".{manifest['name']}.{upload_id}.uploading"
     try:
+        merge_started = time.perf_counter()
         with assembling.open("wb") as output:
             for part in parts:
                 with part.open("rb") as source:
@@ -1203,6 +1211,7 @@ def cloud_upload_complete():
         if assembling.stat().st_size != manifest["size"]:
             raise ValueError("合并后的文件大小不一致")
         os.replace(str(assembling), str(dest))
+        merge_ms = (time.perf_counter() - merge_started) * 1000
         rel = str(dest.relative_to(base)).replace("\\", "/")
         if manifest["title"] or manifest["notes"]:
             db = get_db()
@@ -1213,10 +1222,13 @@ def cloud_upload_complete():
             )
             db.commit()
         shutil.rmtree(upload_dir, ignore_errors=True)
-        return jsonify({
+        response = jsonify({
             "status": "成功", "name": manifest["name"],
             "size": format_size(dest.stat().st_size),
+            "merge_ms": round(merge_ms, 2),
         })
+        response.headers["Server-Timing"] = f"file_merge;dur={merge_ms:.2f}"
+        return response
     except Exception as exc:
         assembling.unlink(missing_ok=True)
         return jsonify({"error": str(exc)}), 500
