@@ -289,7 +289,7 @@ function uploadFiles(files) {
 
     function uploadChunked(file, idx, total) {
         var totalChunks = Math.ceil(file.size / CHUNK_SIZE);
-        var CONCURRENCY = 4; // 同时传 4 个分片
+        var CONCURRENCY = 8; // 同时传 8 个分片
         var bar = document.getElementById('upload-progress-bar');
         var txt = document.getElementById('upload-progress-text');
         document.getElementById('upload-progress').style.display = 'block';
