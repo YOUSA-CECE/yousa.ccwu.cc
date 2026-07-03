@@ -1066,17 +1066,6 @@ def cloud_drive(subpath=None):
 
 # ── Cloud Drive: Upload / Delete / Mkdir ────────────────────────────────
 
-ALLOWED_UPLOAD_EXTS = {
-    ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".svg",
-    ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".csv",
-    ".txt", ".md", ".json", ".xml", ".yaml", ".yml",
-    ".zip", ".rar", ".7z", ".tar", ".gz",
-    ".mp3", ".mp4",
-    ".py", ".js", ".html", ".css", ".sh", ".bat",
-    ".apk",
-}
-
-
 @app.route("/cloud/upload", methods=["POST"])
 @login_required
 @admin_required
@@ -1102,10 +1091,6 @@ def cloud_upload():
     results = []
     for f in uploaded:
         if not f.filename:
-            continue
-        ext = Path(f.filename).suffix.lower()
-        if ext and ext not in ALLOWED_UPLOAD_EXTS:
-            results.append({"name": f.filename, "status": "拒绝", "reason": f"不允许的后缀 {ext}"})
             continue
         dest = target / f.filename
         try:
