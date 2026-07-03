@@ -12,6 +12,9 @@ import android.provider.Settings;
 import android.widget.Toast;
 
 import java.net.URLConnection;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 public class ApkDownloadReceiver extends BroadcastReceiver {
     private static final String PREFS = "yousa_downloads";
@@ -84,6 +87,29 @@ public class ApkDownloadReceiver extends BroadcastReceiver {
             }
         }
         return false;
+    }
+
+    public static long[] getTrackedWebDownloadIds(Context context) {
+        Map<String, ?> values = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getAll();
+        List<Long> ids = new ArrayList<>();
+        for (String key : values.keySet()) {
+            if (!key.startsWith(WEB_NAME_PREFIX)) continue;
+            try {
+                ids.add(Long.parseLong(key.substring(WEB_NAME_PREFIX.length())));
+            } catch (NumberFormatException ignored) {
+                // Ignore damaged legacy preference entries.
+            }
+        }
+        long[] result = new long[ids.size()];
+        for (int i = 0; i < ids.size(); i++) result[i] = ids.get(i);
+        return result;
+    }
+
+    public static void openWebDownloadById(Context context, long id) {
+        DownloadManager manager =
+            (DownloadManager) context.getSystemService(Context.DOWNLOAD_SERVICE);
+        openCompletedWebDownload(context, manager, id);
     }
 
     public static boolean canInstallPackages(Context context) {

@@ -1,7 +1,7 @@
 {
-  "versionCode": 18,
-  "versionName": "1.1.6",
-  "apkUrl": "https://yousa.ccwu.cc/static/yousa-android-v1.1.6.apk",
-  "apkSizeBytes": 46857,
-  "changelog": "修复较新 Android 系统中 PDF 下载完成后查看器可能无法打开的问题；返回 App 后会自动继续打开待查看文件。"
+  "versionCode": 19,
+  "versionName": "1.1.7",
+  "apkUrl": "https://yousa.ccwu.cc/static/yousa-android-v1.1.7.apk",
+  "apkSizeBytes": 50945,
+  "changelog": "新增下载中心，可实时查看下载百分比、已下载大小、总大小和任务状态；支持打开已完成文件及取消异常任务。"
 }

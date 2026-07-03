@@ -88,6 +88,8 @@ public class MainActivity extends Activity {
         refreshIndicator.setTranslationY(-100f);
         refreshIndicator.setAlpha(0f);
         findViewById(R.id.retryButton).setOnClickListener(v -> retryCurrentPage());
+        findViewById(R.id.downloadCenterButton).setOnClickListener(v ->
+            startActivity(new Intent(this, DownloadCenterActivity.class)));
 
         configureWebView();
 
