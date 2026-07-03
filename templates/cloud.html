@@ -311,7 +311,7 @@ async function uploadOneFile(file, title, notes, onProgress) {
     });
     var state = {
         nextPart: 0, inFlight: 0, completed: 0, completedBytes: 0,
-        concurrency: Math.min(4, init.total_parts), retries: 0,
+        concurrency: Math.min(2, init.total_parts), retries: 0,
         concurrencyReduced: false, requestMs: 0, serverWriteMs: 0,
         windowBytes: 0, windowStarted: performance.now(),
         currentSpeed: 0, previousWindowSpeed: 0, failed: false
@@ -340,9 +340,9 @@ async function uploadOneFile(file, title, notes, onProgress) {
         state.currentSpeed = speed;
         if (state.previousWindowSpeed) {
             if (speed > state.previousWindowSpeed * 1.08 && state.retries === 0) {
-                state.concurrency = Math.min(8, state.concurrency + 1);
+                state.concurrency = Math.min(3, state.concurrency + 1);
             } else if (speed < state.previousWindowSpeed * 0.78) {
-                state.concurrency = Math.max(2, state.concurrency - 1);
+                state.concurrency = Math.max(1, state.concurrency - 1);
                 state.concurrencyReduced = true;
             }
         }
@@ -359,7 +359,13 @@ async function uploadOneFile(file, title, notes, onProgress) {
                 return;
             }
             while (state.inFlight < state.concurrency && state.nextPart < init.total_parts) {
-                uploadPart(state.nextPart++);
+                var idx = state.nextPart++;
+                // Stagger starts by 300ms to avoid bursting the tunnel
+                if (state.inFlight > 0) {
+                    setTimeout(function(){ uploadPart(idx); }, 300);
+                } else {
+                    uploadPart(idx);
+                }
             }
         }
 
