@@ -898,11 +898,14 @@ def admin_exec():
         _bash = "/data/data/com.termux/files/usr/bin/bash"
         if not os.path.isfile(_bash):
             _bash = "bash"
+        # Force UTF-8 locale so Chinese chars work (phone shell may use GBK)
+        _env = {**os.environ, "LANG": "en_US.UTF-8", "LC_ALL": "en_US.UTF-8"}
         r = subprocess.run(
             [_bash, "-c", cmd],
             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             timeout=30,
-            cwd=str(BASE_DIR)
+            cwd=str(BASE_DIR),
+            env=_env
         )
         return {
             "ok": True,
