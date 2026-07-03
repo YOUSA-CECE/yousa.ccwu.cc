@@ -993,7 +993,7 @@ def chat():
 @app.route("/cloud/")
 @app.route("/cloud/<path:subpath>")
 def cloud_drive(subpath=None):
-    return redirect(url_for("index"))
+    return redirect(url_for("home"))
 
 
 # ── Cloud Drive: Upload / Delete / Mkdir ────────────────────────────────
@@ -1026,7 +1026,7 @@ def cloud_mkdir():
 
 @app.route("/cloud/preview/<path:filepath>")
 def cloud_preview(filepath):
-    return redirect(url_for("index"))
+    return redirect(url_for("home"))
 
 
 @app.route("/gallery/")
