@@ -19,6 +19,8 @@ public class ApkDownloadReceiver extends BroadcastReceiver {
     private static final String READY_DOWNLOAD_ID = "ready_download_id";
     private static final String WEB_MIME_PREFIX = "web_download_mime_";
     private static final String WEB_NAME_PREFIX = "web_download_name_";
+    private static final String WEB_URL_ID_PREFIX = "web_download_url_id_";
+    private static final String READY_WEB_DOWNLOAD_ID = "ready_web_download_id";
     public static final String EXTRA_INSTALL_UPDATE = "install_downloaded_update";
 
     public static long enqueueApkDownload(Context context, String apkUrl, String fileName) {
@@ -49,11 +51,39 @@ public class ApkDownloadReceiver extends BroadcastReceiver {
     }
 
     public static void registerWebDownload(Context context, long id,
-                                           String mimeType, String fileName) {
+                                           String url, String mimeType, String fileName) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putString(WEB_MIME_PREFIX + id, mimeType == null ? "" : mimeType)
             .putString(WEB_NAME_PREFIX + id, fileName == null ? "" : fileName)
+            .putLong(WEB_URL_ID_PREFIX + url.hashCode(), id)
             .apply();
+    }
+
+    public static boolean openOrReuseWebDownload(Context context, String url) {
+        long id = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getLong(WEB_URL_ID_PREFIX + url.hashCode(), -1);
+        if (id < 0) return false;
+
+        DownloadManager manager =
+            (DownloadManager) context.getSystemService(Context.DOWNLOAD_SERVICE);
+        DownloadManager.Query query = new DownloadManager.Query().setFilterById(id);
+        try (Cursor cursor = manager.query(query)) {
+            if (cursor == null || !cursor.moveToFirst()) return false;
+            int status = cursor.getInt(
+                cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS));
+            if (status == DownloadManager.STATUS_SUCCESSFUL
+                && manager.getUriForDownloadedFile(id) != null) {
+                openCompletedWebDownload(context, manager, id);
+                return true;
+            }
+            if (status == DownloadManager.STATUS_PENDING
+                || status == DownloadManager.STATUS_RUNNING
+                || status == DownloadManager.STATUS_PAUSED) {
+                Toast.makeText(context, "文件正在下载，请稍候", Toast.LENGTH_SHORT).show();
+                return true;
+            }
+        }
+        return false;
     }
 
     public static boolean canInstallPackages(Context context) {
@@ -143,8 +173,24 @@ public class ApkDownloadReceiver extends BroadcastReceiver {
         }
     }
 
-    private void openCompletedWebDownload(Context context, DownloadManager manager,
-                                          long completedId) {
+    public static void openPendingWebDownload(Context context) {
+        long id = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getLong(READY_WEB_DOWNLOAD_ID, -1);
+        if (id < 0) return;
+        DownloadManager manager =
+            (DownloadManager) context.getSystemService(Context.DOWNLOAD_SERVICE);
+        openCompletedWebDownload(context, manager, id);
+    }
+
+    public static void markWebDownloadOpened(Context context, long id) {
+        if (id < 0) return;
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .remove(READY_WEB_DOWNLOAD_ID)
+            .apply();
+    }
+
+    private static void openCompletedWebDownload(Context context, DownloadManager manager,
+                                                 long completedId) {
         String mimeKey = WEB_MIME_PREFIX + completedId;
         String nameKey = WEB_NAME_PREFIX + completedId;
         String savedMime = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -180,9 +226,13 @@ public class ApkDownloadReceiver extends BroadcastReceiver {
 
             Uri contentUri = manager.getUriForDownloadedFile(completedId);
             if (contentUri == null) return;
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                .putLong(READY_WEB_DOWNLOAD_ID, completedId)
+                .apply();
             Intent open = new Intent(context, FileViewerActivity.class)
                 .setDataAndType(contentUri, mimeType)
                 .putExtra(FileViewerActivity.EXTRA_FILE_NAME, fileName)
+                .putExtra(FileViewerActivity.EXTRA_DOWNLOAD_ID, completedId)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             try {
@@ -191,11 +241,6 @@ public class ApkDownloadReceiver extends BroadcastReceiver {
                 Toast.makeText(context,
                     "下载完成，文件已保存到 Download/yousa",
                     Toast.LENGTH_LONG).show();
-            } finally {
-                context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
-                    .remove(mimeKey)
-                    .remove(nameKey)
-                    .apply();
             }
         }
     }

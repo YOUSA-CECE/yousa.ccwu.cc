@@ -35,6 +35,7 @@ import java.util.zip.ZipInputStream;
  */
 public class FileViewerActivity extends Activity {
     public static final String EXTRA_FILE_NAME = "file_name";
+    public static final String EXTRA_DOWNLOAD_ID = "download_id";
 
     private Uri fileUri;
     private String mimeType;
@@ -47,6 +48,8 @@ public class FileViewerActivity extends Activity {
         fileUri = getIntent().getData();
         mimeType = getIntent().getType();
         fileName = getIntent().getStringExtra(EXTRA_FILE_NAME);
+        ApkDownloadReceiver.markWebDownloadOpened(
+            this, getIntent().getLongExtra(EXTRA_DOWNLOAD_ID, -1));
         if (fileName == null || fileName.trim().isEmpty()) fileName = "下载的文件";
         if (mimeType == null || mimeType.isEmpty()) mimeType = guessMime(fileName);
         buildScreen();

@@ -1,7 +1,7 @@
 {
-  "versionCode": 17,
-  "versionName": "1.1.5",
-  "apkUrl": "https://yousa.ccwu.cc/static/yousa-android-v1.1.5.apk",
-  "apkSizeBytes": 46297,
-  "changelog": "下载文件统一保存到 Download/yousa，云盘文件保存到 Download/yousa/云盘；新增图片、PDF、DOCX 和文本文件的软件内预览功能。"
+  "versionCode": 18,
+  "versionName": "1.1.6",
+  "apkUrl": "https://yousa.ccwu.cc/static/yousa-android-v1.1.6.apk",
+  "apkSizeBytes": 46857,
+  "changelog": "修复较新 Android 系统中 PDF 下载完成后查看器可能无法打开的问题；返回 App 后会自动继续打开待查看文件。"
 }

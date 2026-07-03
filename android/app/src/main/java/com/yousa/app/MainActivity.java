@@ -106,6 +106,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        ApkDownloadReceiver.openPendingWebDownload(this);
         if (!ApkDownloadReceiver.hasPendingInstall(this)) return;
         if (ApkDownloadReceiver.canInstallPackages(this)) {
             installPermissionRequested = false;
@@ -552,6 +553,7 @@ public class MainActivity extends Activity {
             Toast.makeText(this, "暂不支持此下载类型", Toast.LENGTH_SHORT).show();
             return;
         }
+        if (ApkDownloadReceiver.openOrReuseWebDownload(this, url)) return;
         try {
             String fileName = URLUtil.guessFileName(url, contentDisposition, mimeType);
             String currentUrl = webView.getUrl();
@@ -587,7 +589,7 @@ public class MainActivity extends Activity {
                 (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
             long downloadId = manager.enqueue(request);
             ApkDownloadReceiver.registerWebDownload(
-                this, downloadId, mimeType, fileName);
+                this, downloadId, url, mimeType, fileName);
             Toast.makeText(this,
                 "已加入系统下载（任务 " + downloadId + "）",
                 Toast.LENGTH_SHORT).show();
