@@ -359,13 +359,7 @@ async function uploadOneFile(file, title, notes, onProgress) {
                 return;
             }
             while (state.inFlight < state.concurrency && state.nextPart < init.total_parts) {
-                var idx = state.nextPart++;
-                // Stagger starts by 300ms to avoid bursting the tunnel
-                if (state.inFlight > 0) {
-                    setTimeout(function(){ uploadPart(idx); }, 300);
-                } else {
-                    uploadPart(idx);
-                }
+                uploadPart(state.nextPart++);
             }
         }
 
