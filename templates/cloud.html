@@ -372,10 +372,9 @@ async function uploadOneFile(file, title, notes, onProgress) {
             for (var attempt = 0; attempt < 3; attempt++) {
                 try {
                     var form = new FormData();
-                    form.append('upload_id', init.upload_id);
-                    form.append('index', String(index));
                     form.append('chunk', file.slice(start, end), file.name + '.part');
-                    var result = await jsonRequest('/cloud/upload/chunk', {method:'POST', body:form});
+                    var chunkUrl = '/cloud/upload/chunk?upload_id=' + encodeURIComponent(init.upload_id) + '&index=' + index;
+                    var result = await jsonRequest(chunkUrl, {method:'POST', body:form});
                     state.requestMs += result._requestMs || 0;
                     state.serverWriteMs += result.write_ms || 0;
                     lastError = null;

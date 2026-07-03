@@ -1152,7 +1152,7 @@ def cloud_upload_init():
 @app.route("/cloud/upload/chunk", methods=["POST"])
 @login_required
 def cloud_upload_chunk():
-    upload_id = request.form.get("upload_id", "")
+    upload_id = request.args.get("upload_id") or request.form.get("upload_id", "")
     upload_dir, manifest = _upload_manifest(upload_id)
     if not manifest or manifest.get("user_id") != current_user.id:
         # Debug: log what went wrong
@@ -1167,7 +1167,7 @@ def cloud_upload_chunk():
         )
         return jsonify({"error": "上传任务不存在或已过期"}), 404
     try:
-        index = int(request.form.get("index", "-1"))
+        index = int(request.args.get("index") or request.form.get("index", "-1"))
     except ValueError:
         index = -1
     if index < 0 or index >= manifest["parts"] or "chunk" not in request.files:
