@@ -554,6 +554,16 @@ public class MainActivity extends Activity {
         }
         try {
             String fileName = URLUtil.guessFileName(url, contentDisposition, mimeType);
+            String currentUrl = webView.getUrl();
+            boolean cloudDownload = false;
+            if (currentUrl != null) {
+                String currentPath = Uri.parse(currentUrl).getPath();
+                cloudDownload = currentPath != null
+                    && (currentPath.equals("/cloud") || currentPath.startsWith("/cloud/"));
+            }
+            String relativePath = cloudDownload
+                ? "yousa/云盘/" + fileName
+                : "yousa/" + fileName;
             DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
             request.setTitle(fileName);
             request.setDescription("正在下载…");
@@ -561,7 +571,8 @@ public class MainActivity extends Activity {
                 DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
             request.setAllowedOverMetered(true);
             request.setAllowedOverRoaming(true);
-            request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName);
+            request.setDestinationInExternalPublicDir(
+                Environment.DIRECTORY_DOWNLOADS, relativePath);
             if (mimeType != null && !mimeType.trim().isEmpty()) {
                 request.setMimeType(mimeType);
             }

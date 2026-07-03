@@ -1,7 +1,7 @@
 {
-  "versionCode": 16,
-  "versionName": "1.1.4",
-  "apkUrl": "https://yousa.ccwu.cc/static/yousa-android-v1.1.4.apk",
-  "apkSizeBytes": 40805,
-  "changelog": "网盘文件下载完成后自动调用系统查看器，可直接打开图片、PDF、文档及音视频；无对应应用时保留文件并提示从下载目录打开。"
+  "versionCode": 17,
+  "versionName": "1.1.5",
+  "apkUrl": "https://yousa.ccwu.cc/static/yousa-android-v1.1.5.apk",
+  "apkSizeBytes": 46297,
+  "changelog": "下载文件统一保存到 Download/yousa，云盘文件保存到 Download/yousa/云盘；新增图片、PDF、DOCX 和文本文件的软件内预览功能。"
 }

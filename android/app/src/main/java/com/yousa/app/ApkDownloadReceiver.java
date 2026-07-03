@@ -180,15 +180,16 @@ public class ApkDownloadReceiver extends BroadcastReceiver {
 
             Uri contentUri = manager.getUriForDownloadedFile(completedId);
             if (contentUri == null) return;
-            Intent open = new Intent(Intent.ACTION_VIEW)
+            Intent open = new Intent(context, FileViewerActivity.class)
                 .setDataAndType(contentUri, mimeType)
+                .putExtra(FileViewerActivity.EXTRA_FILE_NAME, fileName)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             try {
                 context.startActivity(open);
             } catch (Exception error) {
                 Toast.makeText(context,
-                    "下载完成，请从“下载”目录选择应用打开",
+                    "下载完成，文件已保存到 Download/yousa",
                     Toast.LENGTH_LONG).show();
             } finally {
                 context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
