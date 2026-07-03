@@ -86,9 +86,9 @@
 {% endblock %}
 {% block content %}
 <section class="cloud-shell" id="cloud-shell"
-    ondragover="event.preventDefault();if(isAdmin){document.getElementById('upload-zone').classList.add('open');document.getElementById('upload-zone').style.borderColor='var(--accent)';}"
+    ondragover="event.preventDefault();document.getElementById('upload-zone').classList.add('open');document.getElementById('upload-zone').style.borderColor='var(--accent)';"
     ondragleave="event.preventDefault();document.getElementById('upload-zone').style.borderColor='var(--border-dark)'"
-    ondrop="if(isAdmin){event.preventDefault();pendingFiles=event.dataTransfer.files;document.getElementById('upload-confirm').style.display='inline-block';document.getElementById('upload-zone').classList.add('has-files');}">
+    ondrop="event.preventDefault();pendingFiles=event.dataTransfer.files;document.getElementById('upload-confirm').style.display='inline-block';document.getElementById('upload-zone').classList.add('has-files');">
     <div class="cloud-header glass-panel">
         <div>
             <h1>☁️ 云盘</h1>
@@ -110,11 +110,9 @@
         </div>
     </div>
 
-    {% if is_admin %}
     <div style="text-align:center;margin:0 auto 1rem;width:30%;min-width:120px">
         <button class="form-btn" style="width:100%;font-size:0.9rem;padding:0.4rem 0" onclick="toggleUpload()">📤 上传文件</button>
     </div>
-    {% endif %}
 
     <div class="cloud-stats">
         <span class="cloud-stat">📁 <strong>{{ dirs|length }}</strong> 个文件夹</span>

@@ -1068,7 +1068,6 @@ def cloud_drive(subpath=None):
 
 @app.route("/cloud/upload", methods=["POST"])
 @login_required
-@admin_required
 def cloud_upload():
     # Upload files to the cloud drive.
     subpath = request.form.get("path", "").strip()
