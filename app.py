@@ -1155,6 +1155,16 @@ def cloud_upload_chunk():
     upload_id = request.form.get("upload_id", "")
     upload_dir, manifest = _upload_manifest(upload_id)
     if not manifest or manifest.get("user_id") != current_user.id:
+        # Debug: log what went wrong
+        import glob as _glob
+        existing = [p.name for p in UPLOAD_TMP_DIR.iterdir() if p.is_dir()][:5] if UPLOAD_TMP_DIR.exists() else []
+        app.logger.error(
+            "chunk 404: upload_id=%s user_id=%s manifests_exist=%s dir_exists=%s",
+            upload_id[:16] if upload_id else "EMPTY",
+            current_user.id,
+            existing,
+            upload_dir.exists() if upload_dir else False
+        )
         return jsonify({"error": "上传任务不存在或已过期"}), 404
     try:
         index = int(request.form.get("index", "-1"))
