@@ -3,7 +3,9 @@ package com.yousa.app;
 import android.app.Activity;
 import android.app.DownloadManager;
 import android.database.Cursor;
+import android.content.res.ColorStateList;
 import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -56,27 +58,30 @@ public class DownloadCenterActivity extends Activity {
     private void buildScreen() {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(Color.rgb(238, 243, 248));
+        root.setBackgroundColor(Color.rgb(244, 247, 250));
 
         LinearLayout toolbar = new LinearLayout(this);
         toolbar.setGravity(Gravity.CENTER_VERTICAL);
-        toolbar.setPadding(dp(12), dp(8), dp(12), dp(8));
+        toolbar.setPadding(dp(16), dp(14), dp(16), dp(12));
+        toolbar.setBackground(gradient(
+            Color.rgb(247, 222, 232), Color.rgb(222, 233, 246), 0));
         Button back = new Button(this);
-        back.setText("返回");
+        back.setText("‹  返回");
+        styleButton(back, Color.WHITE, Color.rgb(53, 63, 76));
         back.setOnClickListener(v -> finish());
         toolbar.addView(back);
         TextView title = new TextView(this);
         title.setText("下载中心");
-        title.setTextSize(20);
+        title.setTextSize(22);
         title.setTextColor(Color.rgb(25, 42, 58));
-        title.setPadding(dp(14), 0, 0, 0);
+        title.setPadding(dp(16), 0, 0, 0);
         toolbar.addView(title);
         root.addView(toolbar);
 
         ScrollView scroll = new ScrollView(this);
         list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);
-        list.setPadding(dp(12), dp(6), dp(12), dp(24));
+        list.setPadding(dp(14), dp(16), dp(14), dp(28));
         scroll.addView(list);
         root.addView(scroll, new LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
@@ -120,8 +125,9 @@ public class DownloadCenterActivity extends Activity {
 
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
-        card.setPadding(dp(14), dp(12), dp(14), dp(12));
-        card.setBackgroundColor(Color.WHITE);
+        card.setPadding(dp(16), dp(15), dp(16), dp(14));
+        card.setElevation(dp(3));
+        card.setBackground(rounded(Color.WHITE, 18));
         LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         cardParams.bottomMargin = dp(10);
@@ -137,6 +143,9 @@ public class DownloadCenterActivity extends Activity {
             this, null, android.R.attr.progressBarStyleHorizontal);
         progress.setMax(100);
         progress.setProgress(percent);
+        progress.setProgressTintList(ColorStateList.valueOf(Color.rgb(215, 102, 146)));
+        progress.setProgressBackgroundTintList(
+            ColorStateList.valueOf(Color.rgb(230, 235, 240)));
         progress.setIndeterminate(total <= 0
             && (status == DownloadManager.STATUS_PENDING
                 || status == DownloadManager.STATUS_RUNNING));
@@ -153,10 +162,25 @@ public class DownloadCenterActivity extends Activity {
             0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
 
         Button action = new Button(this);
-        action.setText(status == DownloadManager.STATUS_SUCCESSFUL ? "打开" : "取消");
+        boolean retryable = status == DownloadManager.STATUS_FAILED
+            || status == DownloadManager.STATUS_PAUSED;
+        action.setText(status == DownloadManager.STATUS_SUCCESSFUL
+            ? "打开" : retryable ? "重新下载" : "取消");
+        styleButton(action,
+            status == DownloadManager.STATUS_SUCCESSFUL || retryable
+                ? Color.rgb(215, 102, 146) : Color.rgb(236, 239, 243),
+            status == DownloadManager.STATUS_SUCCESSFUL || retryable
+                ? Color.WHITE : Color.rgb(72, 83, 96));
         if (status == DownloadManager.STATUS_SUCCESSFUL) {
             action.setOnClickListener(v ->
                 ApkDownloadReceiver.openWebDownloadById(this, id));
+        } else if (retryable) {
+            action.setOnClickListener(v -> {
+                boolean started = ApkDownloadReceiver.retryWebDownload(this, id);
+                Toast.makeText(this, started ? "已重新开始下载" : "无法重试，请重新点击文件",
+                    Toast.LENGTH_SHORT).show();
+                refreshDownloads();
+            });
         } else {
             action.setOnClickListener(v -> {
                 manager.remove(id);
@@ -177,14 +201,35 @@ public class DownloadCenterActivity extends Activity {
             case DownloadManager.STATUS_SUCCESSFUL:
                 return "已完成 · " + formatBytes(downloaded);
             case DownloadManager.STATUS_FAILED:
-                return "下载失败（错误 " + reason + "）· " + size;
+                return "下载失败 · " + failureReason(reason) + " · " + size;
             case DownloadManager.STATUS_PAUSED:
-                return "已暂停（原因 " + reason + "）· " + percent + "% · " + size;
+                return "已暂停 · " + pauseReason(reason) + " · " + percent + "% · " + size;
             case DownloadManager.STATUS_PENDING:
                 return "等待下载 · " + size;
             default:
                 return "下载中 · " + percent + "% · " + size;
         }
+    }
+
+    private String pauseReason(int reason) {
+        switch (reason) {
+            case DownloadManager.PAUSED_WAITING_TO_RETRY:
+                return "连接中断，等待重试";
+            case DownloadManager.PAUSED_WAITING_FOR_NETWORK:
+                return "等待网络";
+            case DownloadManager.PAUSED_QUEUED_FOR_WIFI:
+                return "等待 Wi-Fi";
+            default:
+                return "系统暂缓下载";
+        }
+    }
+
+    private String failureReason(int reason) {
+        if (reason == DownloadManager.ERROR_INSUFFICIENT_SPACE) return "存储空间不足";
+        if (reason == DownloadManager.ERROR_FILE_ALREADY_EXISTS) return "文件已存在";
+        if (reason == DownloadManager.ERROR_CANNOT_RESUME) return "无法继续下载";
+        if (reason >= 400 && reason < 600) return "服务器错误 " + reason;
+        return "错误 " + reason;
     }
 
     private static String formatBytes(long bytes) {
@@ -201,6 +246,29 @@ public class DownloadCenterActivity extends Activity {
         view.setTextSize(size);
         view.setTextColor(color);
         return view;
+    }
+
+    private void styleButton(Button button, int background, int foreground) {
+        button.setTextColor(foreground);
+        button.setTextSize(14);
+        button.setAllCaps(false);
+        button.setMinHeight(dp(40));
+        button.setPadding(dp(16), 0, dp(16), 0);
+        button.setBackground(rounded(background, 20));
+    }
+
+    private GradientDrawable rounded(int color, int radiusDp) {
+        GradientDrawable drawable = new GradientDrawable();
+        drawable.setColor(color);
+        drawable.setCornerRadius(dp(radiusDp));
+        return drawable;
+    }
+
+    private GradientDrawable gradient(int start, int end, int radiusDp) {
+        GradientDrawable drawable = new GradientDrawable(
+            GradientDrawable.Orientation.LEFT_RIGHT, new int[]{start, end});
+        drawable.setCornerRadius(dp(radiusDp));
+        return drawable;
     }
 
     private int dp(int value) {

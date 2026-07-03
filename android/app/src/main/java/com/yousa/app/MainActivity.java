@@ -32,6 +32,9 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
+
 public class MainActivity extends Activity {
 
     private static final String APP_URL = "https://yousa.ccwu.cc";
@@ -561,7 +564,8 @@ public class MainActivity extends Activity {
         }
         if (ApkDownloadReceiver.openOrReuseWebDownload(this, url)) return;
         try {
-            String fileName = URLUtil.guessFileName(url, contentDisposition, mimeType);
+            String fileName = resolveDownloadFileName(
+                url, contentDisposition, mimeType);
             String currentUrl = webView.getUrl();
             boolean cloudDownload = false;
             if (currentUrl != null) {
@@ -591,17 +595,45 @@ public class MainActivity extends Activity {
             if (cookies != null) request.addRequestHeader("Cookie", cookies);
             request.addRequestHeader("Referer",
                 webView.getUrl() == null ? APP_URL : webView.getUrl());
+            request.addRequestHeader("Accept-Encoding", "identity");
             DownloadManager manager =
                 (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
             long downloadId = manager.enqueue(request);
             ApkDownloadReceiver.registerWebDownload(
-                this, downloadId, url, mimeType, fileName);
+                this, downloadId, url, userAgent, cookies,
+                webView.getUrl() == null ? APP_URL : webView.getUrl(),
+                mimeType, fileName, relativePath);
             Toast.makeText(this,
                 "已加入系统下载（任务 " + downloadId + "）",
                 Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
             Toast.makeText(this, R.string.download_failed, Toast.LENGTH_SHORT).show();
         }
+    }
+
+    private String resolveDownloadFileName(String url, String disposition,
+                                           String mimeType) {
+        if (disposition != null) {
+            java.util.regex.Matcher encoded = java.util.regex.Pattern.compile(
+                "filename\\*\\s*=\\s*UTF-8''([^;]+)",
+                java.util.regex.Pattern.CASE_INSENSITIVE).matcher(disposition);
+            if (encoded.find()) {
+                try {
+                    return URLDecoder.decode(encoded.group(1), StandardCharsets.UTF_8.name())
+                        .replaceAll("[\\\\/:*?\"<>|]", "_");
+                } catch (Exception ignored) {
+                    // Fall through to the regular filename parameter.
+                }
+            }
+            java.util.regex.Matcher regular = java.util.regex.Pattern.compile(
+                "filename\\s*=\\s*\"?([^\";]+)",
+                java.util.regex.Pattern.CASE_INSENSITIVE).matcher(disposition);
+            if (regular.find()) {
+                return regular.group(1).trim().replaceAll("[\\\\/:*?\"<>|]", "_");
+            }
+        }
+        return URLUtil.guessFileName(url, disposition, mimeType)
+            .replaceAll("[\\\\/:*?\"<>|]", "_");
     }
 
     @Override

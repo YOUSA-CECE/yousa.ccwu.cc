@@ -1,7 +1,7 @@
 {
-  "versionCode": 20,
-  "versionName": "1.1.8",
-  "apkUrl": "https://yousa.ccwu.cc/static/yousa-android-v1.1.8.apk",
-  "apkSizeBytes": 50821,
-  "changelog": "下载中心入口移至云盘页面并仅在安卓 App 中显示；重新设计按钮样式，使其与云盘界面风格统一。"
+  "versionCode": 21,
+  "versionName": "1.1.9",
+  "apkUrl": "https://yousa.ccwu.cc/static/yousa-android-v1.1.9.apk",
+  "apkSizeBytes": 53557,
+  "changelog": "修复 PDF 下载暂停和文件名异常问题；暂停或失败任务可重新下载；全面优化下载中心卡片、进度和状态视觉。"
 }

@@ -23,6 +23,11 @@ public class ApkDownloadReceiver extends BroadcastReceiver {
     private static final String WEB_MIME_PREFIX = "web_download_mime_";
     private static final String WEB_NAME_PREFIX = "web_download_name_";
     private static final String WEB_URL_ID_PREFIX = "web_download_url_id_";
+    private static final String WEB_URL_PREFIX = "web_download_url_";
+    private static final String WEB_AGENT_PREFIX = "web_download_agent_";
+    private static final String WEB_COOKIE_PREFIX = "web_download_cookie_";
+    private static final String WEB_REFERER_PREFIX = "web_download_referer_";
+    private static final String WEB_PATH_PREFIX = "web_download_path_";
     private static final String READY_WEB_DOWNLOAD_ID = "ready_web_download_id";
     public static final String EXTRA_INSTALL_UPDATE = "install_downloaded_update";
 
@@ -54,12 +59,58 @@ public class ApkDownloadReceiver extends BroadcastReceiver {
     }
 
     public static void registerWebDownload(Context context, long id,
-                                           String url, String mimeType, String fileName) {
+                                           String url, String userAgent, String cookies,
+                                           String referer, String mimeType,
+                                           String fileName, String relativePath) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putString(WEB_MIME_PREFIX + id, mimeType == null ? "" : mimeType)
             .putString(WEB_NAME_PREFIX + id, fileName == null ? "" : fileName)
+            .putString(WEB_URL_PREFIX + id, url)
+            .putString(WEB_AGENT_PREFIX + id, userAgent == null ? "" : userAgent)
+            .putString(WEB_COOKIE_PREFIX + id, cookies == null ? "" : cookies)
+            .putString(WEB_REFERER_PREFIX + id, referer == null ? "" : referer)
+            .putString(WEB_PATH_PREFIX + id, relativePath)
             .putLong(WEB_URL_ID_PREFIX + url.hashCode(), id)
             .apply();
+    }
+
+    public static boolean retryWebDownload(Context context, long oldId) {
+        android.content.SharedPreferences prefs =
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        String url = prefs.getString(WEB_URL_PREFIX + oldId, "");
+        String fileName = prefs.getString(WEB_NAME_PREFIX + oldId, "");
+        String mimeType = prefs.getString(WEB_MIME_PREFIX + oldId, "");
+        String path = prefs.getString(WEB_PATH_PREFIX + oldId, "");
+        if (url == null || url.isEmpty() || path == null || path.isEmpty()) return false;
+
+        DownloadManager manager =
+            (DownloadManager) context.getSystemService(Context.DOWNLOAD_SERVICE);
+        manager.remove(oldId);
+        try {
+            DownloadManager.Request request =
+                new DownloadManager.Request(Uri.parse(url));
+            request.setTitle(fileName);
+            request.setDescription("正在重新下载…");
+            request.setNotificationVisibility(
+                DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+            request.setAllowedOverMetered(true);
+            request.setAllowedOverRoaming(true);
+            request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, path);
+            if (mimeType != null && !mimeType.isEmpty()) request.setMimeType(mimeType);
+            String agent = prefs.getString(WEB_AGENT_PREFIX + oldId, "");
+            String cookies = prefs.getString(WEB_COOKIE_PREFIX + oldId, "");
+            String referer = prefs.getString(WEB_REFERER_PREFIX + oldId, "");
+            if (agent != null && !agent.isEmpty()) request.addRequestHeader("User-Agent", agent);
+            if (cookies != null && !cookies.isEmpty()) request.addRequestHeader("Cookie", cookies);
+            if (referer != null && !referer.isEmpty()) request.addRequestHeader("Referer", referer);
+            request.addRequestHeader("Accept-Encoding", "identity");
+            long newId = manager.enqueue(request);
+            registerWebDownload(context, newId, url, agent, cookies, referer,
+                mimeType, fileName, path);
+            return true;
+        } catch (Exception error) {
+            return false;
+        }
     }
 
     public static boolean openOrReuseWebDownload(Context context, String url) {
