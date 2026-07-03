@@ -992,76 +992,8 @@ def chat():
 
 @app.route("/cloud/")
 @app.route("/cloud/<path:subpath>")
-@login_required
 def cloud_drive(subpath=None):
-    # Cloud drive — file manager with search and filter.
-    base = FILE_DIR.resolve()
-    if subpath:
-        target = (base / subpath).resolve()
-    else:
-        target = base
-
-    if not str(target).startswith(str(base)):
-        abort(403)
-    if not target.exists():
-        return render_template("cloud.html", dirs=[], files=[],
-                               current_path="", breadcrumbs=[],
-                               total_size="0 B")
-
-    entries = []
-    total_bytes = 0
-    try:
-        for entry in sorted(target.iterdir(), key=lambda p: (p.is_file(), p.name.lower())):
-            if entry.name.startswith("."):
-                continue
-            rel = str(entry.relative_to(base)).replace("\\", "/")
-            stat = entry.stat()
-            total_bytes += stat.st_size if entry.is_file() else 0
-            modified = datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M")
-            ext = entry.suffix.lower() if entry.is_file() else ""
-            icon = FILE_ICONS.get(ext, "📄")
-            entries.append({
-                "name": entry.name,
-                "path": rel,
-                "is_dir": entry.is_dir(),
-                "size": stat.st_size,
-                "size_hr": format_size(stat.st_size),
-                "modified": modified,
-                "icon": icon,
-            })
-    except PermissionError:
-        abort(403)
-
-    dirs = [e for e in entries if e["is_dir"]]
-    files = [e for e in entries if not e["is_dir"]]
-
-    # Load upload metadata from DB
-    db = get_db()
-    meta_rows = db.execute(
-        "SELECT m.filepath, m.title, m.notes, m.created_at, u.nickname AS uploaded_by_name "
-        "FROM upload_meta m "
-        "LEFT JOIN users u ON m.uploaded_by = u.id "
-        "WHERE m.type='cloud' ORDER BY m.created_at DESC"
-    ).fetchall()
-    upload_meta = {row["filepath"]: {
-        "title": row["title"], "notes": row["notes"],
-        "uploaded_by": row["uploaded_by_name"] or "未知",
-        "created_at": row["created_at"]
-    } for row in meta_rows}
-
-    current_path = subpath.replace("\\", "/") if subpath else ""
-    parts = current_path.split("/") if current_path else []
-    breadcrumbs = []
-    accum = ""
-    for p in parts:
-        accum = f"{accum}/{p}" if accum else p
-        breadcrumbs.append({"name": p, "path": accum})
-
-    return render_template("cloud.html", dirs=dirs, files=files,
-                           current_path=current_path, breadcrumbs=breadcrumbs,
-                           total_size=format_size(total_bytes),
-                           is_admin=current_user.is_admin,
-                           upload_meta=upload_meta)
+    return redirect(url_for("index"))
 
 
 # ── Cloud Drive: Upload / Delete / Mkdir ────────────────────────────────
@@ -1078,150 +1010,23 @@ ALLOWED_UPLOAD_EXTS = {
 
 
 @app.route("/cloud/upload", methods=["POST"])
-@login_required
-@admin_required
 def cloud_upload():
-    # Upload files to the cloud drive.
-    subpath = request.form.get("path", "").strip()
-    base = FILE_DIR.resolve()
-    target = (base / subpath).resolve() if subpath else base
-
-    if not str(target).startswith(str(base)):
-        return jsonify({"error": "路径不允许"}), 403
-    if not target.exists():
-        return jsonify({"error": "目录不存在"}), 404
-    if not target.is_dir():
-        return jsonify({"error": "目标不是目录"}), 400
-
-    if "file" not in request.files:
-        return jsonify({"error": "未选择文件"}), 400
-
-    uploaded = request.files.getlist("file")
-    title = request.form.get("title", "").strip()
-    notes = request.form.get("notes", "").strip()
-    results = []
-    for f in uploaded:
-        if not f.filename:
-            continue
-        ext = Path(f.filename).suffix.lower()
-        if ext and ext not in ALLOWED_UPLOAD_EXTS:
-            results.append({"name": f.filename, "status": "拒绝", "reason": f"不允许的后缀 {ext}"})
-            continue
-        dest = target / f.filename
-        try:
-            f.save(str(dest))
-            # Save metadata
-            rel = str(dest.relative_to(base)).replace("\\", "/")
-            if title or notes:
-                db = get_db()
-                db.execute(
-                    "INSERT INTO upload_meta (type, filepath, title, notes, uploaded_by) VALUES (?, ?, ?, ?, ?)",
-                    ("cloud", rel, title, notes, current_user.id)
-                )
-                db.commit()
-            results.append({"name": f.filename, "status": "成功", "size": format_size(dest.stat().st_size)})
-        except Exception as e:
-            results.append({"name": f.filename, "status": "失败", "reason": str(e)})
-
-    return jsonify({"results": results})
+    return jsonify({"error": "云盘已暂时下线"}), 503
 
 
 @app.route("/cloud/delete", methods=["POST"])
-@login_required
-@admin_required
 def cloud_delete():
-    # Delete a file or empty directory from cloud drive.
-    path = request.form.get("path", "").strip()
-    if not path:
-        return jsonify({"error": "参数缺失"}), 400
-
-    base = FILE_DIR.resolve()
-    target = (base / path).resolve()
-
-    if not str(target).startswith(str(base)):
-        return jsonify({"error": "路径不允许"}), 403
-    if not target.exists():
-        return jsonify({"error": "文件不存在"}), 404
-
-    try:
-        if target.is_dir():
-            # Only delete empty directories
-            target.rmdir()
-        else:
-            target.unlink()
-        return jsonify({"status": "ok"})
-    except OSError as e:
-        return jsonify({"error": str(e)}), 500
+    return jsonify({"error": "云盘已暂时下线"}), 503
 
 
 @app.route("/cloud/mkdir", methods=["POST"])
-@login_required
-@admin_required
 def cloud_mkdir():
-    # Create a new directory in the cloud drive.
-    subpath = request.form.get("path", "").strip()
-    name = request.form.get("name", "").strip()
-    if not name:
-        return jsonify({"error": "目录名不能为空"}), 400
-
-    base = FILE_DIR.resolve()
-    parent = (base / subpath).resolve() if subpath else base
-
-    if not str(parent).startswith(str(base)):
-        return jsonify({"error": "路径不允许"}), 403
-
-    new_dir = parent / name
-    try:
-        new_dir.mkdir(exist_ok=True)
-        return jsonify({"status": "ok", "name": name})
-    except OSError as e:
-        return jsonify({"error": str(e)}), 500
+    return jsonify({"error": "云盘已暂时下线"}), 503
 
 
 @app.route("/cloud/preview/<path:filepath>")
-@login_required
 def cloud_preview(filepath):
-    # Preview a text/markdown file inline.
-    base = FILE_DIR.resolve()
-    target = (base / filepath).resolve()
-
-    if not str(target).startswith(str(base)):
-        abort(403)
-    if not target.exists() or not target.is_file():
-        abort(404)
-
-    ext = target.suffix.lower()
-
-    if ext in (".md", ".txt", ".py", ".js", ".html", ".css", ".json",
-               ".xml", ".yaml", ".yml", ".sh", ".bat", ".csv", ".log"):
-        try:
-            raw = target.read_text(encoding="utf-8")
-        except Exception:
-            try:
-                raw = target.read_text(encoding="gbk")
-            except Exception:
-                raw = "[无法解码此文件]"
-
-        html_content = ""
-        if ext == ".md":
-            html_content = render_markdown(raw)
-        else:
-            import html as _html
-            html_content = f"<pre style='background:rgba(30,36,44,.88);color:#e4e9ef;padding:1.2rem;border-radius:var(--radius-sm);overflow-x:auto;font-size:0.85rem;line-height:1.5'><code>{_html.escape(raw)}</code></pre>"
-
-        return render_template("cloud_preview.html",
-                               filename=target.name,
-                               filepath=filepath,
-                               html_content=html_content,
-                               ext=ext)
-
-    # For images, redirect to gallery
-    if ext in (".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".svg"):
-        return redirect(url_for("gallery", subpath=filepath))
-
-    # For other files, trigger download
-    return send_from_directory(target.parent, target.name,
-                               as_attachment=True)
+    return redirect(url_for("index"))
 
 
 @app.route("/gallery/")
