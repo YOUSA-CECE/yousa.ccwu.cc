@@ -894,8 +894,12 @@ def admin_exec():
     if not cmd:
         return {"ok": False, "error": "cmd required"}
     try:
+        # Find bash: prefer Termux path on phone, fallback to system
+        _bash = "/data/data/com.termux/files/usr/bin/bash"
+        if not os.path.isfile(_bash):
+            _bash = "bash"
         r = subprocess.run(
-            ["bash", "-c", cmd],
+            [_bash, "-c", cmd],
             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             timeout=30,
             cwd=str(BASE_DIR)
