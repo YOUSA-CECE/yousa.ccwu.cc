@@ -16,6 +16,7 @@ try:
 except ImportError:
     ZoneInfo = None
 
+from PIL import Image
 import markdown
 from flask import (
     Flask, render_template, request, jsonify, send_from_directory,
@@ -1208,6 +1209,65 @@ def cloud_preview(filepath):
                                as_attachment=True)
 
 
+# ── Gallery Thumbnails ────────────────────────────────────────────
+
+THUMB_DIR = BASE_DIR / ".gallery_thumbs"
+THUMB_SIZE = (400, 280)  # max width, max height — covers 260px grid + 220px img height
+THUMB_DIR.mkdir(exist_ok=True)
+
+
+def _thumb_path(image_rel: str) -> Path:
+    """Return the thumbnail file path for a given image relative path."""
+    safe = image_rel.replace("/", "_").replace("\\", "_")
+    return THUMB_DIR / safe
+
+
+def _make_thumbnail(image_abs: Path, thumb_abs: Path, size=THUMB_SIZE):
+    """Generate a thumbnail. Returns True if created, False if skipped."""
+    if thumb_abs.exists():
+        return False  # already exists
+    ext = thumb_abs.suffix.lower()
+    thumb_abs.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        img = Image.open(image_abs)
+        img.thumbnail(size, Image.LANCZOS)
+        # Convert RGBA/P mode to RGB for JPEG; save as JPEG for smaller size
+        if ext in (".jpg", ".jpeg"):
+            if img.mode in ("RGBA", "P"):
+                img = img.convert("RGB")
+            img.save(str(thumb_abs), "JPEG", quality=80)
+        else:
+            # Keep PNG/WebP's original format (preserves transparency)
+            img.save(str(thumb_abs))
+        return True
+    except Exception:
+        return False
+
+
+@app.route("/gallery/thumb/<path:image_rel>")
+def gallery_thumb(image_rel):
+    """Serve a thumbnail for the gallery image at the given relative path."""
+    target = (BASE_DIR / image_rel).resolve()
+    if not str(target).startswith(str(BASE_DIR)):
+        abort(403)
+    if not target.exists() or not target.is_file():
+        abort(404)
+    ext = target.suffix.lower()
+    if ext not in (".png", ".jpg", ".jpeg", ".gif", ".webp"):
+        abort(404)
+
+    # Pick thumbnail extension — use .jpg for big savings on photos
+    thumb_ext = ".jpg" if ext in (".jpg", ".jpeg") else ext
+    thumb_abs = _thumb_path(image_rel)
+    if thumb_abs.suffix.lower() != thumb_ext:
+        thumb_abs = thumb_abs.with_suffix(thumb_ext)
+
+    _make_thumbnail(target, thumb_abs)
+    return send_from_directory(thumb_abs.parent, thumb_abs.name)
+
+
+# ── Gallery ────────────────────────────────────────────────────────
+
 @app.route("/gallery/")
 @app.route("/gallery/<path:subpath>")
 def gallery(subpath=None):
@@ -1348,6 +1408,11 @@ def gallery_upload():
     try:
         file.save(str(dest))
         rel = str(dest.relative_to(BASE_DIR)).replace("\\", "/")
+        # Generate thumbnail immediately after upload
+        thumb_ext = ".jpg" if ext in (".jpg", ".jpeg") else ext
+        thumb_abs = _thumb_path(rel).with_suffix(thumb_ext)
+        _make_thumbnail(dest, thumb_abs)
+
         db = get_db()
         db.execute(
             "INSERT INTO upload_meta (type, filepath, title, notes, visibility, uploaded_by) VALUES (?, ?, ?, ?, ?, ?)",

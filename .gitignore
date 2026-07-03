@@ -1,4 +1,6 @@
 __pycache__/
+# Gallery auto-generated thumbnails
+.gallery_thumbs/
 *.pyc
 .apikey
 users.db

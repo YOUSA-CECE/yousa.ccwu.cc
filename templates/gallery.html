@@ -201,7 +201,8 @@
              data-uploadtime="{{ meta.get('created_at', '') }}"
              onclick="openLightbox({{ loop.index0 }})">
             <div class="gallery-image-wrap">
-                <img src="/gallery/{{ img.path }}" alt="{{ img.name }}" loading="lazy">
+                <img src="/gallery/thumb/{{ img.path }}" alt="{{ img.name }}" loading="lazy"
+                     onerror="this.src='/gallery/{{ img.path }}';this.onerror=null">
                 {% if meta.get('visibility') == 'private' %}
                 <span class="gallery-privacy">🔒 私密</span>
                 {% endif %}
