@@ -898,7 +898,7 @@ def admin_exec():
             ["bash", "-c", cmd],
             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             timeout=30,
-            cwd="/opt/yousa"
+            cwd=str(BASE_DIR)
         )
         return {
             "ok": True,
