@@ -289,12 +289,11 @@ function uploadFiles(files) {
 
     function uploadChunked(file, idx, total) {
         var totalChunks = Math.ceil(file.size / CHUNK_SIZE);
-        var CONCURRENCY = 8; // 同时传 8 个分片
+        var CONCURRENCY = 8;
         var bar = document.getElementById('upload-progress-bar');
         var txt = document.getElementById('upload-progress-text');
         document.getElementById('upload-progress').style.display = 'block';
 
-        // Build all chunk tasks
         var chunks = [];
         for (var i = 0; i < totalChunks; i++) {
             var start = i * CHUNK_SIZE;
@@ -303,6 +302,7 @@ function uploadFiles(files) {
         }
 
         var completed = 0;
+        var finished = false;
 
         function updateProgress() {
             var pct = Math.round(completed / totalChunks * 100);
@@ -326,20 +326,22 @@ function uploadFiles(files) {
                 if (data.error) throw new Error(data.error);
                 completed++;
                 updateProgress();
-                if (data.done) {
+                if (data.done && !finished) {
+                    finished = true;
                     allOk.push(file.name);
                     document.getElementById('upload-progress').style.display = 'none';
+                    // Signal the outer promise to resolve immediately
+                    // (checkInterval is fallback for edge cases)
                 }
             });
         }
 
-        // Worker pool: run up to CONCURRENCY at a time
         return new Promise(function(resolve, reject) {
             var next = 0;
             var err = null;
 
             function worker() {
-                if (err) return;
+                if (err || finished) return;
                 if (next >= chunks.length) return;
                 var idx2 = next++;
                 uploadOneChunk(chunks[idx2])
@@ -350,17 +352,16 @@ function uploadFiles(files) {
                 });
             }
 
-            // Start workers
             var poolSize = Math.min(CONCURRENCY, chunks.length);
             for (var w = 0; w < poolSize; w++) {
                 worker();
             }
 
-            // Poll for completion
             var checkInterval = setInterval(function() {
-                if (completed >= totalChunks || err) {
+                if (finished || completed >= totalChunks || err) {
                     clearInterval(checkInterval);
-                    resolve();
+                    if (err) reject(err);
+                    else resolve();
                 }
             }, 200);
         });

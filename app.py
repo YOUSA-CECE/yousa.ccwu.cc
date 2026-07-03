@@ -1177,6 +1177,15 @@ def cloud_upload_chunk():
     if len(received) == total_chunks:
         # Merge chunks
         dest = target / filename
+        # Guard against race: if dest already exists, another request already merged
+        if dest.exists():
+            import shutil
+            if tmp_dir.exists():
+                shutil.rmtree(str(tmp_dir))
+            return jsonify({
+                "done": True, "filename": filename,
+                "size": format_size(dest.stat().st_size)
+            })
         try:
             with open(str(dest), "wb") as out:
                 for cp in received:
