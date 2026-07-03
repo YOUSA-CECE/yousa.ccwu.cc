@@ -1111,6 +1111,95 @@ def cloud_upload():
     return jsonify({"results": results})
 
 
+# ── Chunked Upload ────────────────────────────────────────────────
+# Temp directory for in-progress chunked uploads
+CHUNK_TEMP = CLOUD_DIR / ".uploads"
+CHUNK_TEMP.mkdir(parents=True, exist_ok=True)
+
+@app.route("/cloud/upload_chunk", methods=["POST"])
+@login_required
+def cloud_upload_chunk():
+    """Receive a file chunk; reassemble when all chunks arrive."""
+    subpath = request.form.get("path", "").strip()
+    base = FILE_DIR.resolve()
+    target = (base / subpath).resolve() if subpath else base
+
+    if not str(target).startswith(str(base)):
+        return jsonify({"error": "路径不允许"}), 403
+    if not target.exists():
+        return jsonify({"error": "目录不存在"}), 404
+    if not target.is_dir():
+        return jsonify({"error": "目标不是目录"}), 400
+
+    if "file" not in request.files:
+        return jsonify({"error": "未选择文件"}), 400
+
+    f = request.files["file"]
+    filename = request.form.get("filename", f.filename or "").strip()
+    if not filename:
+        return jsonify({"error": "文件名不能为空"}), 400
+
+    try:
+        chunk_index = int(request.form.get("chunk_index", "0"))
+        total_chunks = int(request.form.get("total_chunks", "1"))
+    except (ValueError, TypeError):
+        return jsonify({"error": "chunk_index/total_chunks 必须为整数"}), 400
+
+    # Validate range
+    if chunk_index < 0 or total_chunks < 1 or chunk_index >= total_chunks:
+        return jsonify({"error": "分片索引无效"}), 400
+
+    # Save chunk to temp dir
+    tmp_dir = CHUNK_TEMP / filename
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+    chunk_path = tmp_dir / str(chunk_index)
+    f.save(str(chunk_path))
+
+    # Single-chunk upload → save directly
+    if total_chunks == 1:
+        dest = target / filename
+        chunk_path.rename(dest)
+        tmp_dir.rmdir()
+        return jsonify({
+            "done": True, "filename": filename,
+            "size": format_size(dest.stat().st_size)
+        })
+
+    # Check if all chunks received
+    received = sorted(tmp_dir.iterdir(), key=lambda p: int(p.name))
+    if len(received) == total_chunks:
+        # Merge chunks
+        dest = target / filename
+        try:
+            with open(str(dest), "wb") as out:
+                for cp in received:
+                    out.write(cp.read_bytes())
+            # Cleanup temp
+            import shutil
+            shutil.rmtree(str(tmp_dir))
+        except Exception as e:
+            return jsonify({"error": f"合并失败: {e}"}), 500
+
+        # Save metadata
+        title = request.form.get("title", "").strip()
+        notes = request.form.get("notes", "").strip()
+        if title or notes:
+            rel = str(dest.relative_to(base)).replace("\\", "/")
+            db = get_db()
+            db.execute(
+                "INSERT INTO upload_meta (type, filepath, title, notes, uploaded_by) VALUES (?, ?, ?, ?, ?)",
+                ("cloud", rel, title, notes, current_user.id)
+            )
+            db.commit()
+
+        return jsonify({
+            "done": True, "filename": filename,
+            "size": format_size(dest.stat().st_size)
+        })
+
+    return jsonify({"done": False, "received": len(received), "total": total_chunks})
+
+
 @app.route("/cloud/delete", methods=["POST"])
 @login_required
 @admin_required
