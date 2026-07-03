@@ -161,6 +161,9 @@ public class DownloadCenterActivity extends Activity {
         footer.addView(detail, new LinearLayout.LayoutParams(
             0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
 
+        LinearLayout actions = new LinearLayout(this);
+        actions.setGravity(Gravity.CENTER_VERTICAL);
+
         Button action = new Button(this);
         boolean retryable = status == DownloadManager.STATUS_FAILED
             || status == DownloadManager.STATUS_PAUSED;
@@ -183,12 +186,26 @@ public class DownloadCenterActivity extends Activity {
             });
         } else {
             action.setOnClickListener(v -> {
-                manager.remove(id);
+                ApkDownloadReceiver.deleteWebDownload(this, id);
                 refreshDownloads();
                 Toast.makeText(this, "下载任务已取消", Toast.LENGTH_SHORT).show();
             });
         }
-        footer.addView(action);
+        actions.addView(action);
+
+        Button delete = new Button(this);
+        delete.setText("删除");
+        styleButton(delete, Color.rgb(246, 232, 236), Color.rgb(176, 65, 91));
+        LinearLayout.LayoutParams deleteParams = new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        deleteParams.leftMargin = dp(7);
+        actions.addView(delete, deleteParams);
+        delete.setOnClickListener(v -> {
+            ApkDownloadReceiver.deleteWebDownload(this, id);
+            refreshDownloads();
+            Toast.makeText(this, "任务和文件已删除", Toast.LENGTH_SHORT).show();
+        });
+        footer.addView(actions);
         card.addView(footer);
         list.addView(card, cardParams);
     }

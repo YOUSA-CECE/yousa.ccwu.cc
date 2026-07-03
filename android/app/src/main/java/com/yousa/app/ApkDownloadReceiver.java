@@ -163,6 +163,30 @@ public class ApkDownloadReceiver extends BroadcastReceiver {
         openCompletedWebDownload(context, manager, id);
     }
 
+    public static void deleteWebDownload(Context context, long id) {
+        DownloadManager manager =
+            (DownloadManager) context.getSystemService(Context.DOWNLOAD_SERVICE);
+        manager.remove(id);
+        android.content.SharedPreferences prefs =
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        String url = prefs.getString(WEB_URL_PREFIX + id, "");
+        android.content.SharedPreferences.Editor editor = prefs.edit()
+            .remove(WEB_MIME_PREFIX + id)
+            .remove(WEB_NAME_PREFIX + id)
+            .remove(WEB_URL_PREFIX + id)
+            .remove(WEB_AGENT_PREFIX + id)
+            .remove(WEB_COOKIE_PREFIX + id)
+            .remove(WEB_REFERER_PREFIX + id)
+            .remove(WEB_PATH_PREFIX + id);
+        if (url != null && !url.isEmpty()) {
+            editor.remove(WEB_URL_ID_PREFIX + url.hashCode());
+        }
+        if (prefs.getLong(READY_WEB_DOWNLOAD_ID, -1) == id) {
+            editor.remove(READY_WEB_DOWNLOAD_ID);
+        }
+        editor.apply();
+    }
+
     public static boolean canInstallPackages(Context context) {
         return Build.VERSION.SDK_INT < Build.VERSION_CODES.O
             || context.getPackageManager().canRequestPackageInstalls();
