@@ -8,6 +8,8 @@ import sqlite3
 import mimetypes
 import threading
 import time
+import uuid
+import shutil
 from pathlib import Path
 from datetime import datetime, timezone
 from functools import wraps
@@ -1074,6 +1076,151 @@ def cloud_drive(subpath=None):
 
 # ── Cloud Drive: Upload / Delete / Mkdir ────────────────────────────────
 
+UPLOAD_PART_SIZE = 8 * 1024 * 1024
+UPLOAD_MAX_PART_SIZE = 10 * 1024 * 1024
+UPLOAD_TMP_DIR = CLOUD_DIR / ".uploads"
+UPLOAD_TMP_DIR.mkdir(exist_ok=True)
+
+
+def _cloud_upload_target(subpath):
+    """Resolve an upload directory without allowing traversal outside the drive."""
+    base = FILE_DIR.resolve()
+    target = (base / subpath).resolve() if subpath else base
+    try:
+        target.relative_to(base)
+    except ValueError:
+        return base, None
+    return base, target
+
+
+def _upload_manifest(upload_id):
+    if not re.fullmatch(r"[0-9a-f]{32}", upload_id or ""):
+        return None, None
+    upload_dir = UPLOAD_TMP_DIR / upload_id
+    manifest_path = upload_dir / "manifest.json"
+    if not manifest_path.is_file():
+        return None, None
+    try:
+        return upload_dir, json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None, None
+
+
+@app.route("/cloud/upload/init", methods=["POST"])
+@login_required
+def cloud_upload_init():
+    data = request.get_json(silent=True) or {}
+    filename = str(data.get("name", "")).strip()
+    subpath = str(data.get("path", "")).strip()
+    try:
+        size = int(data.get("size", -1))
+    except (TypeError, ValueError):
+        size = -1
+
+    if not filename or filename != Path(filename).name or "\x00" in filename:
+        return jsonify({"error": "文件名不合法"}), 400
+    if size < 0:
+        return jsonify({"error": "文件大小不合法"}), 400
+
+    base, target = _cloud_upload_target(subpath)
+    if target is None:
+        return jsonify({"error": "路径不允许"}), 403
+    if not target.is_dir():
+        return jsonify({"error": "目录不存在"}), 404
+
+    upload_id = uuid.uuid4().hex
+    upload_dir = UPLOAD_TMP_DIR / upload_id
+    upload_dir.mkdir()
+    total_parts = max(1, (size + UPLOAD_PART_SIZE - 1) // UPLOAD_PART_SIZE)
+    manifest = {
+        "name": filename, "path": subpath, "size": size,
+        "parts": total_parts, "user_id": current_user.id,
+        "title": str(data.get("title", "")).strip(),
+        "notes": str(data.get("notes", "")).strip(),
+        "created_at": time.time(),
+    }
+    (upload_dir / "manifest.json").write_text(
+        json.dumps(manifest, ensure_ascii=False), encoding="utf-8"
+    )
+    return jsonify({
+        "upload_id": upload_id,
+        "chunk_size": UPLOAD_PART_SIZE,
+        "total_parts": total_parts,
+    })
+
+
+@app.route("/cloud/upload/chunk", methods=["POST"])
+@login_required
+def cloud_upload_chunk():
+    upload_id = request.form.get("upload_id", "")
+    upload_dir, manifest = _upload_manifest(upload_id)
+    if not manifest or manifest.get("user_id") != current_user.id:
+        return jsonify({"error": "上传任务不存在或已过期"}), 404
+    try:
+        index = int(request.form.get("index", "-1"))
+    except ValueError:
+        index = -1
+    if index < 0 or index >= manifest["parts"] or "chunk" not in request.files:
+        return jsonify({"error": "分片参数不合法"}), 400
+
+    chunk = request.files["chunk"]
+    part_path = upload_dir / f"{index:08d}.part"
+    chunk.save(str(part_path))
+    part_size = part_path.stat().st_size
+    expected = min(
+        UPLOAD_PART_SIZE,
+        max(0, manifest["size"] - index * UPLOAD_PART_SIZE),
+    )
+    if part_size > UPLOAD_MAX_PART_SIZE or part_size != expected:
+        part_path.unlink(missing_ok=True)
+        return jsonify({"error": "分片大小不正确"}), 400
+    return jsonify({"status": "ok", "index": index})
+
+
+@app.route("/cloud/upload/complete", methods=["POST"])
+@login_required
+def cloud_upload_complete():
+    data = request.get_json(silent=True) or {}
+    upload_id = str(data.get("upload_id", ""))
+    upload_dir, manifest = _upload_manifest(upload_id)
+    if not manifest or manifest.get("user_id") != current_user.id:
+        return jsonify({"error": "上传任务不存在或已过期"}), 404
+
+    base, target = _cloud_upload_target(manifest["path"])
+    if target is None or not target.is_dir():
+        return jsonify({"error": "目标目录不存在"}), 404
+    parts = [upload_dir / f"{i:08d}.part" for i in range(manifest["parts"])]
+    if any(not part.is_file() for part in parts):
+        return jsonify({"error": "仍有分片未上传完成"}), 409
+
+    dest = target / manifest["name"]
+    assembling = target / f".{manifest['name']}.{upload_id}.uploading"
+    try:
+        with assembling.open("wb") as output:
+            for part in parts:
+                with part.open("rb") as source:
+                    shutil.copyfileobj(source, output, length=1024 * 1024)
+        if assembling.stat().st_size != manifest["size"]:
+            raise ValueError("合并后的文件大小不一致")
+        os.replace(str(assembling), str(dest))
+        rel = str(dest.relative_to(base)).replace("\\", "/")
+        if manifest["title"] or manifest["notes"]:
+            db = get_db()
+            db.execute(
+                "INSERT INTO upload_meta (type, filepath, title, notes, uploaded_by) "
+                "VALUES (?, ?, ?, ?, ?)",
+                ("cloud", rel, manifest["title"], manifest["notes"], current_user.id),
+            )
+            db.commit()
+        shutil.rmtree(upload_dir, ignore_errors=True)
+        return jsonify({
+            "status": "成功", "name": manifest["name"],
+            "size": format_size(dest.stat().st_size),
+        })
+    except Exception as exc:
+        assembling.unlink(missing_ok=True)
+        return jsonify({"error": str(exc)}), 500
+
 @app.route("/cloud/upload", methods=["POST"])
 @login_required
 def cloud_upload():
@@ -1116,104 +1263,6 @@ def cloud_upload():
             results.append({"name": f.filename, "status": "失败", "reason": str(e)})
 
     return jsonify({"results": results})
-
-
-# ── Chunked Upload ────────────────────────────────────────────────
-# Temp directory for in-progress chunked uploads
-CHUNK_TEMP = CLOUD_DIR / ".uploads"
-CHUNK_TEMP.mkdir(parents=True, exist_ok=True)
-
-@app.route("/cloud/upload_chunk", methods=["POST"])
-@login_required
-def cloud_upload_chunk():
-    """Receive a file chunk; reassemble when all chunks arrive."""
-    subpath = request.form.get("path", "").strip()
-    base = FILE_DIR.resolve()
-    target = (base / subpath).resolve() if subpath else base
-
-    if not str(target).startswith(str(base)):
-        return jsonify({"error": "路径不允许"}), 403
-    if not target.exists():
-        return jsonify({"error": "目录不存在"}), 404
-    if not target.is_dir():
-        return jsonify({"error": "目标不是目录"}), 400
-
-    if "file" not in request.files:
-        return jsonify({"error": "未选择文件"}), 400
-
-    f = request.files["file"]
-    filename = request.form.get("filename", f.filename or "").strip()
-    if not filename:
-        return jsonify({"error": "文件名不能为空"}), 400
-
-    try:
-        chunk_index = int(request.form.get("chunk_index", "0"))
-        total_chunks = int(request.form.get("total_chunks", "1"))
-    except (ValueError, TypeError):
-        return jsonify({"error": "chunk_index/total_chunks 必须为整数"}), 400
-
-    # Validate range
-    if chunk_index < 0 or total_chunks < 1 or chunk_index >= total_chunks:
-        return jsonify({"error": "分片索引无效"}), 400
-
-    # Save chunk to temp dir
-    tmp_dir = CHUNK_TEMP / filename
-    tmp_dir.mkdir(parents=True, exist_ok=True)
-    chunk_path = tmp_dir / str(chunk_index)
-    f.save(str(chunk_path))
-
-    # Single-chunk upload → save directly
-    if total_chunks == 1:
-        dest = target / filename
-        chunk_path.rename(dest)
-        tmp_dir.rmdir()
-        return jsonify({
-            "done": True, "filename": filename,
-            "size": format_size(dest.stat().st_size)
-        })
-
-    # Check if all chunks received
-    received = sorted(tmp_dir.iterdir(), key=lambda p: int(p.name))
-    if len(received) == total_chunks:
-        # Merge chunks
-        dest = target / filename
-        # Guard against race: if dest already exists, another request already merged
-        if dest.exists():
-            import shutil
-            if tmp_dir.exists():
-                shutil.rmtree(str(tmp_dir))
-            return jsonify({
-                "done": True, "filename": filename,
-                "size": format_size(dest.stat().st_size)
-            })
-        try:
-            with open(str(dest), "wb") as out:
-                for cp in received:
-                    out.write(cp.read_bytes())
-            # Cleanup temp
-            import shutil
-            shutil.rmtree(str(tmp_dir))
-        except Exception as e:
-            return jsonify({"error": f"合并失败: {e}"}), 500
-
-        # Save metadata
-        title = request.form.get("title", "").strip()
-        notes = request.form.get("notes", "").strip()
-        if title or notes:
-            rel = str(dest.relative_to(base)).replace("\\", "/")
-            db = get_db()
-            db.execute(
-                "INSERT INTO upload_meta (type, filepath, title, notes, uploaded_by) VALUES (?, ?, ?, ?, ?)",
-                ("cloud", rel, title, notes, current_user.id)
-            )
-            db.commit()
-
-        return jsonify({
-            "done": True, "filename": filename,
-            "size": format_size(dest.stat().st_size)
-        })
-
-    return jsonify({"done": False, "received": len(received), "total": total_chunks})
 
 
 @app.route("/cloud/delete", methods=["POST"])

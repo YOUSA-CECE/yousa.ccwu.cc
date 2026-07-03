@@ -257,142 +257,103 @@ function toggleUpload() {
 
 function doUpload() {
     if (!pendingFiles || !pendingFiles.length) return;
-    uploadFiles(pendingFiles);
+    uploadFiles(Array.prototype.slice.call(pendingFiles));
     document.getElementById('upload-confirm').style.display = 'none';
 }
 
-function uploadFiles(files) {
+async function jsonRequest(url, options) {
+    var response = await fetch(url, options);
+    var text = await response.text();
+    var data;
+    try { data = text ? JSON.parse(text) : {}; }
+    catch (_) { throw new Error('服务器返回异常（HTTP ' + response.status + '）'); }
+    if (!response.ok) throw new Error(data.error || ('上传失败（HTTP ' + response.status + '）'));
+    return data;
+}
+
+async function uploadOneFile(file, title, notes, onProgress) {
+    var init = await jsonRequest('/cloud/upload/init', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({name:file.name, size:file.size, path:currentPath, title:title, notes:notes})
+    });
+    var nextPart = 0, completed = 0;
+    async function worker() {
+        while (true) {
+            var index = nextPart++;
+            if (index >= init.total_parts) return;
+            var start = index * init.chunk_size;
+            var lastError;
+            for (var attempt = 0; attempt < 3; attempt++) {
+                try {
+                    var form = new FormData();
+                    form.append('upload_id', init.upload_id);
+                    form.append('index', String(index));
+                    form.append('chunk', file.slice(start, Math.min(start + init.chunk_size, file.size)), file.name + '.part');
+                    await jsonRequest('/cloud/upload/chunk', {method:'POST', body:form});
+                    lastError = null;
+                    break;
+                } catch (error) {
+                    lastError = error;
+                    if (attempt < 2) await new Promise(function(resolve) {
+                        setTimeout(resolve, 500 * (attempt + 1));
+                    });
+                }
+            }
+            if (lastError) throw lastError;
+            completed++;
+            onProgress(completed / init.total_parts);
+        }
+    }
+    var workers = [];
+    for (var i = 0; i < Math.min(8, init.total_parts); i++) workers.push(worker());
+    await Promise.all(workers);
+    return jsonRequest('/cloud/upload/complete', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({upload_id:init.upload_id})
+    });
+}
+
+async function uploadFiles(files) {
     if (!files || !files.length) return;
-    var rd = document.getElementById('upload-result');
     var title = (document.getElementById('upload-title').value || '').trim();
     var notes = (document.getElementById('upload-notes').value || '').trim();
-    var CHUNK_SIZE = 10 * 1024 * 1024;
-    var allOk = [];
-
-    function uploadOne(file, idx, total) {
-        if (file.size > CHUNK_SIZE) {
-            return uploadChunked(file, idx, total);
-        }
-        var fd = new FormData();
-        fd.append('file', file);
-        fd.append('path', currentPath);
-        fd.append('title', title);
-        fd.append('notes', notes);
-        return fetch('/cloud/upload', { method: 'POST', body: fd })
-        .then(function(r){ return r.json(); })
-        .then(function(data){
-            if (data.results && data.results[0] && data.results[0].status === '成功') {
-                allOk.push(data.results[0].name);
-            }
-        });
-    }
-
-    function uploadChunked(file, idx, total) {
-        var totalChunks = Math.ceil(file.size / CHUNK_SIZE);
-        var CONCURRENCY = 8;
-        var bar = document.getElementById('upload-progress-bar');
-        var txt = document.getElementById('upload-progress-text');
-        document.getElementById('upload-progress').style.display = 'block';
-
-        var chunks = [];
-        for (var i = 0; i < totalChunks; i++) {
-            var start = i * CHUNK_SIZE;
-            var end = Math.min(start + CHUNK_SIZE, file.size);
-            chunks.push({ index: i, blob: file.slice(start, end) });
-        }
-
-        var completed = 0;
-        var finished = false;
-
-        function updateProgress() {
-            var pct = Math.round(completed / totalChunks * 100);
-            txt.textContent = '[' + (idx+1) + '/' + total + '] ' + file.name + ' -- ' + completed + '/' + totalChunks;
-            bar.style.width = pct + '%';
-        }
-
-        function uploadOneChunk(chunkInfo) {
-            var fd = new FormData();
-            fd.append('file', chunkInfo.blob);
-            fd.append('filename', file.name);
-            fd.append('chunk_index', chunkInfo.index);
-            fd.append('total_chunks', totalChunks);
-            fd.append('path', currentPath);
-            fd.append('title', title);
-            fd.append('notes', notes);
-
-            return fetch('/cloud/upload_chunk', { method: 'POST', body: fd })
-            .then(function(r){ return r.json(); })
-            .then(function(data){
-                if (data.error) throw new Error(data.error);
-                completed++;
-                updateProgress();
-                if (data.done && !finished) {
-                    finished = true;
-                    allOk.push(file.name);
-                    document.getElementById('upload-progress').style.display = 'none';
-                    // Signal the outer promise to resolve immediately
-                    // (checkInterval is fallback for edge cases)
-                }
-            });
-        }
-
-        return new Promise(function(resolve, reject) {
-            var next = 0;
-            var err = null;
-
-            function worker() {
-                if (err || finished) return;
-                if (next >= chunks.length) return;
-                var idx2 = next++;
-                uploadOneChunk(chunks[idx2])
-                .then(worker)
-                .catch(function(e) {
-                    err = e;
-                    reject(e);
-                });
-            }
-
-            var poolSize = Math.min(CONCURRENCY, chunks.length);
-            for (var w = 0; w < poolSize; w++) {
-                worker();
-            }
-
-            var checkInterval = setInterval(function() {
-                if (finished || completed >= totalChunks || err) {
-                    clearInterval(checkInterval);
-                    if (err) reject(err);
-                    else resolve();
-                }
-            }, 200);
-        });
-    }
-
-    rd.innerHTML = '<div class="upload-result-item">⏳ 上传中…</div>';
-
-    var chain = Promise.resolve();
+    var rd = document.getElementById('upload-result');
+    rd.innerHTML = '';
+    var succeeded = 0;
     for (var i = 0; i < files.length; i++) {
-        (function(file, idx){
-            chain = chain.then(function(){ return uploadOne(file, idx, files.length); });
-        })(files[i], i);
-    }
-
-    chain.then(function(){
-        if (allOk.length) {
-            rd.innerHTML = allOk.map(function(n){
-                return '<div class="upload-result-item ok">✅ ' + n + '</div>';
-            }).join('');
-            toast(allOk.length + ' 个文件上传成功');
-            document.getElementById('upload-title').value = '';
-            document.getElementById('upload-notes').value = '';
-            setTimeout(function(){ location.reload(); }, 1500);
-        } else {
-            rd.innerHTML = '<div class="upload-result-item err">❌ 上传失败</div>';
+        var file = files[i];
+        var row = document.createElement('div');
+        row.className = 'upload-result-item';
+        row.textContent = '⏳ ' + file.name + '：准备中…';
+        rd.appendChild(row);
+        try {
+            var result = await uploadOneFile(file, title, notes, function(progress) {
+                var percent = Math.round(progress * 100);
+                row.textContent = '⏳ ' + file.name + '：' + percent + '%';
+                document.getElementById('upload-progress').style.display = 'block';
+                document.getElementById('upload-progress-text').textContent =
+                    '[' + (i + 1) + '/' + files.length + '] ' + file.name;
+                document.getElementById('upload-progress-bar').style.width = percent + '%';
+            });
+            row.className = 'upload-result-item ok';
+            row.textContent = '✅ ' + result.name + ' (' + result.size + ')';
+            succeeded++;
+        } catch (error) {
+            row.className = 'upload-result-item err';
+            row.textContent = '❌ ' + file.name + ' — ' + error.message;
         }
-    })
-    .catch(function(e){
-        console.error(e);
-        rd.innerHTML = '<div class="upload-result-item err">❌ ' + (e.message || '网络错误') + '</div>';
-    });
+    }
+    toast(succeeded + ' 个文件上传成功');
+    if (succeeded) {
+        document.getElementById('upload-title').value = '';
+        document.getElementById('upload-notes').value = '';
+        setTimeout(function(){ location.reload(); }, 1200);
+    } else {
+        document.getElementById('upload-confirm').style.display = 'inline-block';
+    }
+    document.getElementById('upload-progress').style.display = 'none';
 }
 
 function deleteItem(path) {
