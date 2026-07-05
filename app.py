@@ -65,7 +65,7 @@ CACHE_INVALIDATING_ENDPOINTS = {
     "login", "logout", "register", "delete_user", "change_role",
     "update_nickname", "change_password", "blog_write", "blog_delete",
     "guestbook", "guestbook_delete", "gallery_upload",
-    "cloud_upload", "cloud_delete", "cloud_mkdir",
+    "cloud_upload", "cloud_delete", "cloud_mkdir", "cloud_rename",
 }
 ACTIVITY_COLUMNS = {
     "last_seen_at": "TEXT",
@@ -1308,6 +1308,46 @@ def cloud_upload():
             results.append({"name": f.filename, "status": "失败", "reason": str(e)})
 
     return jsonify({"results": results})
+
+
+@app.route("/cloud/rename", methods=["POST"])
+@login_required
+@admin_required
+def cloud_rename():
+    # Rename a file in the cloud drive.
+    path = request.form.get("path", "").strip()
+    new_name = request.form.get("new_name", "").strip()
+    if not path or not new_name:
+        return jsonify({"error": "参数缺失"}), 400
+    if new_name != Path(new_name).name or "\\x00" in new_name:
+        return jsonify({"error": "文件名不合法"}), 400
+
+    base = FILE_DIR.resolve()
+    target = (base / path).resolve()
+    if not str(target).startswith(str(base)):
+        return jsonify({"error": "路径不允许"}), 403
+    if not target.exists() or not target.is_file():
+        return jsonify({"error": "文件不存在"}), 404
+
+    parent = target.parent
+    dest = parent / new_name
+    if dest.exists():
+        return jsonify({"error": "目标文件名已存在"}), 409
+
+    try:
+        target.rename(dest)
+        # Update upload_meta filepath if metadata exists
+        db = get_db()
+        old_rel = str(target.relative_to(base)).replace("\\", "/")
+        new_rel = str(dest.relative_to(base)).replace("\\", "/")
+        db.execute(
+            "UPDATE upload_meta SET filepath=? WHERE type='cloud' AND filepath=?",
+            (new_rel, old_rel),
+        )
+        db.commit()
+        return jsonify({"status": "ok", "old_name": target.name, "new_name": new_name})
+    except OSError as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/cloud/delete", methods=["POST"])

@@ -215,6 +215,7 @@
             {% if is_admin %}
             <span class="file-actions">
                 <button onclick="window.open('/files/{{ f.path }}')" title="下载">⬇️</button>
+                <button onclick="renameItem('{{ f.path }}')" title="重命名">✏️</button>
                 <button class="del-btn" onclick="deleteItem('{{ f.path }}')" title="删除">🗑️</button>
             </span>
             {% endif %}
@@ -494,6 +495,21 @@ async function uploadFiles(files) {
     } else {
         document.getElementById('upload-confirm').style.display = 'inline-block';
     }
+}
+
+function renameItem(path) {
+    var oldName = path.split('/').pop();
+    var newName = prompt('重命名文件：', oldName);
+    if (!newName || !newName.trim() || newName.trim() === oldName) return;
+    var fd = new FormData();
+    fd.append('path', (currentPath ? currentPath + '/' : '') + path);
+    fd.append('new_name', newName.trim());
+    fetch('/cloud/rename', { method: 'POST', body: fd })
+    .then(function(r){return r.json();})
+    .then(function(d){
+        if(d.status==='ok'){toast('已重命名为「'+d.new_name+'」');setTimeout(function(){location.reload();},500);}
+        else {toast('重命名失败: '+(d.error||''));}
+    });
 }
 
 function deleteItem(path) {
