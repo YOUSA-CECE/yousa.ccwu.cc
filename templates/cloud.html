@@ -325,7 +325,7 @@ async function uploadOneFile(file, title, notes, visibility, onProgress) {
     });
     var state = {
         nextPart: 0, inFlight: 0, completed: 0, completedBytes: 0,
-        concurrency: Math.min(2, init.total_parts), retries: 0,
+        concurrency: Math.min(3, init.total_parts), retries: 0,
         concurrencyReduced: false, requestMs: 0, serverWriteMs: 0,
         windowBytes: 0, windowStarted: performance.now(),
         currentSpeed: 0, previousWindowSpeed: 0, failed: false
@@ -447,19 +447,29 @@ async function uploadFiles(files) {
     var rd = document.getElementById('upload-result');
     rd.innerHTML = '';
     var succeeded = 0;
-    for (var i = 0; i < files.length; i++) {
-        var file = files[i];
-        var row = document.createElement('div');
-        row.className = 'upload-result-item';
+    var total = files.length;
+    var MAX_PARALLEL = 3;
+
+    // Create result rows upfront
+    var rows = [];
+    for (var i = 0; i < total; i++) {
+        rows[i] = document.createElement('div');
+        rows[i].className = 'upload-result-item';
+        rows[i].textContent = '⏳ ' + files[i].name + '：排队中…';
+        rd.appendChild(rows[i]);
+    }
+
+    // Upload one file with index tracking
+    async function uploadOne(file, idx) {
+        var row = rows[idx];
         row.textContent = '⏳ ' + file.name + '：准备中…';
-        rd.appendChild(row);
         try {
             var result = await uploadOneFile(file, title, notes, visibility, function(stats) {
                 var percent = Math.min(100, Math.round(stats.progress * 100));
                 row.textContent = '⏳ ' + file.name + '：' + percent + '%';
                 document.getElementById('upload-progress').style.display = 'block';
                 document.getElementById('upload-progress-text').textContent =
-                    '[' + (i + 1) + '/' + files.length + '] ' + file.name;
+                    '[' + (idx + 1) + '/' + total + '] ' + file.name;
                 document.getElementById('upload-progress-bar').style.width = percent + '%';
                 document.getElementById('upload-speed-text').textContent =
                     '当前 ' + formatBytes(stats.currentSpeed) + '/s · 平均 '
@@ -481,6 +491,21 @@ async function uploadFiles(files) {
             row.textContent = '❌ ' + file.name + ' — ' + error.message;
         }
     }
+
+    // Parallel with concurrency limit
+    var queue = files.slice();
+    function nextWorker() {
+        if (queue.length === 0) return Promise.resolve();
+        var file = queue.shift();
+        var idx = files.indexOf(file);
+        return uploadOne(file, idx).then(nextWorker);
+    }
+    var workers = [];
+    for (var w = 0; w < Math.min(MAX_PARALLEL, total); w++) {
+        workers.push(nextWorker());
+    }
+    await Promise.all(workers);
+
     toast(succeeded + ' 个文件上传成功');
     if (succeeded) {
         document.getElementById('upload-title').value = '';

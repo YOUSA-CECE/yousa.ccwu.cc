@@ -1096,8 +1096,8 @@ def cloud_drive(subpath=None):
 
 # ── Cloud Drive: Upload / Delete / Mkdir ────────────────────────────────
 
-UPLOAD_PART_SIZE = 8 * 1024 * 1024
-UPLOAD_MAX_PART_SIZE = 10 * 1024 * 1024
+UPLOAD_PART_SIZE = 16 * 1024 * 1024
+UPLOAD_MAX_PART_SIZE = 20 * 1024 * 1024
 UPLOAD_TMP_DIR = CLOUD_DIR / ".uploads"
 UPLOAD_TMP_DIR.mkdir(exist_ok=True)
 
