@@ -1,7 +1,7 @@
 {
-  "versionCode": 24,
-  "versionName": "1.1.12",
-  "apkUrl": "https://yousa.ccwu.cc/static/yousa-android-v1.1.12.apk",
-  "apkSizeBytes": 65993,
-  "changelog": "全面升级视频播放器：手势控制（亮度/音量/快进快退）、双击左右跳转10秒、变速播放（0.5×-2×）、全屏沉浸模式、屏幕锁定、播放进度条拖动、自动隐藏控制栏。新增常见视频格式预览（MP4/WebM/3GP/MKV/AVI）。"
+  "versionCode": 25,
+  "versionName": "1.1.13",
+  "apkUrl": "https://yousa.ccwu.cc/static/yousa-android-v1.1.13.apk",
+  "apkSizeBytes": 66397,
+  "changelog": "App 内点上传画廊时直接唤起系统相册/图库选择图片。单张上传打开系统照片选择器，多张上传（图集）可一次选取最多50张。非图片文件仍使用通用文件选择器。"
 }

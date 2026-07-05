@@ -13,6 +13,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.provider.MediaStore;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
@@ -173,19 +174,48 @@ public class MainActivity extends Activity {
                 }
                 fileChooserCallback = callback;
                 try {
-                    Intent picker = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-                    picker.addCategory(Intent.CATEGORY_OPENABLE);
+                    // Check if the request is image-only → open the system photo picker / gallery
                     String[] acceptedTypes = params.getAcceptTypes();
-                    String mimeType = "*/*";
-                    if (acceptedTypes != null && acceptedTypes.length == 1
-                        && acceptedTypes[0] != null && !acceptedTypes[0].isEmpty()) {
-                        mimeType = acceptedTypes[0];
-                    } else if (acceptedTypes != null && acceptedTypes.length > 1) {
-                        picker.putExtra(Intent.EXTRA_MIME_TYPES, acceptedTypes);
+                    boolean imageOnly = false;
+                    boolean multiImage = false;
+                    if (acceptedTypes != null) {
+                        int imageCount = 0;
+                        for (String t : acceptedTypes) {
+                            if (t != null && (t.equals("image/*") || t.startsWith("image/"))) {
+                                imageCount++;
+                            }
+                        }
+                        imageOnly = imageCount > 0 && imageCount == acceptedTypes.length;
                     }
-                    picker.setType(mimeType);
-                    picker.putExtra(Intent.EXTRA_ALLOW_MULTIPLE,
-                        params.getMode() == FileChooserParams.MODE_OPEN_MULTIPLE);
+                    multiImage = imageOnly
+                        && params.getMode() == FileChooserParams.MODE_OPEN_MULTIPLE;
+
+                    Intent picker;
+                    if (imageOnly) {
+                        // Use the photo picker (API 33+) or gallery intent (older)
+                        if (Build.VERSION.SDK_INT >= 33 && multiImage) {
+                            picker = new Intent(MediaStore.ACTION_PICK_IMAGES);
+                            picker.putExtra(MediaStore.EXTRA_PICK_IMAGES_MAX, 50);
+                        } else if (Build.VERSION.SDK_INT >= 33) {
+                            picker = new Intent(MediaStore.ACTION_PICK_IMAGES);
+                        } else {
+                            picker = new Intent(Intent.ACTION_PICK,
+                                MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+                            picker.setType("image/*");
+                        }
+                    } else {
+                        picker = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                        picker.addCategory(Intent.CATEGORY_OPENABLE);
+                        String mimeType = "*/*";
+                        if (acceptedTypes != null && acceptedTypes.length == 1
+                            && acceptedTypes[0] != null && !acceptedTypes[0].isEmpty()) {
+                            mimeType = acceptedTypes[0];
+                        } else if (acceptedTypes != null && acceptedTypes.length > 1) {
+                            picker.putExtra(Intent.EXTRA_MIME_TYPES, acceptedTypes);
+                        }
+                        picker.setType(mimeType);
+                    }
+                    picker.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, multiImage);
                     startActivityForResult(picker, REQUEST_FILE_CHOOSER);
                     return true;
                 } catch (Exception e) {
