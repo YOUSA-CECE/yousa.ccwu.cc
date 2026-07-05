@@ -251,6 +251,7 @@ button:active,
     margin: 0 auto;
     padding: 2rem 1.25rem 3rem;
     width: 100%;
+    min-width: 0;
 }
 
 .footer {
@@ -270,6 +271,7 @@ button:active,
     grid-template-columns: 320px 1fr;
     gap: 1.25rem;
     align-items: start;
+    min-width: 0;
 }
 
 .profile-card {
@@ -277,6 +279,7 @@ button:active,
     top: 86px;
     overflow: hidden;
     padding: 0 1.25rem 1.25rem;
+    min-width: 0;
 }
 
 .profile-cover {
@@ -1611,11 +1614,16 @@ button:active,
         padding: 0 0 .2rem;
         scrollbar-width: none;
         -webkit-overflow-scrolling: touch;
-        mask-image: linear-gradient(90deg, #000 calc(100% - 26px), transparent);
+        mask-image: linear-gradient(90deg, #000 calc(100% - 48px), transparent 98%);
     }
 
     .nav-links::-webkit-scrollbar {
         display: none;
+    }
+
+    .nav-link {
+        font-size: .82rem;
+        white-space: nowrap;
     }
 
     .brand-mark {
