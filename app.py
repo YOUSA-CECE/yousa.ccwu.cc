@@ -408,8 +408,11 @@ def apply_cache_policy(response):
         response.headers["Vary"] = "Cookie"
         response.headers["X-Yousa-Cache"] = "gallery-image"
     elif is_safe_page:
+        # public + s-maxage 允许 Cloudflare/CDN 边缘缓存 HTML
+        # max-age=0 浏览器不缓存（每次协商）
+        # stale-while-revalidate=900 后台刷新时先返回旧内容
         response.headers["Cache-Control"] = (
-            "private, max-age=180, stale-while-revalidate=900"
+            "public, s-maxage=60, max-age=0, stale-while-revalidate=900"
         )
         vary = response.headers.get("Vary", "")
         vary_values = {item.strip() for item in vary.split(",") if item.strip()}
