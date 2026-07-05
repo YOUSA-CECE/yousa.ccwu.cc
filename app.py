@@ -382,7 +382,7 @@ def apply_cache_policy(response):
     # Cache safe navigation pages privately and keep sensitive responses fresh.
     is_static = request.endpoint == "static"
     is_safe_page = (
-        request.method == "GET"
+        request.method in ("GET", "HEAD")
         and (
             request.path in SAFE_CACHE_PATHS
             or request.endpoint in SAFE_CACHE_ENDPOINTS
