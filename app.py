@@ -24,6 +24,7 @@ from flask import (
     Flask, render_template, request, jsonify, send_from_directory,
     abort, redirect, url_for, flash, g, session
 )
+from agent_bridge import agent_bridge
 from flask_login import (
     LoginManager, UserMixin, login_user, logout_user,
     login_required, current_user
@@ -80,6 +81,9 @@ app = Flask(__name__, template_folder=str(TEMPLATES_DIR),
             static_folder=str(STATIC_DIR), static_url_path="/static")
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 app.secret_key = os.getenv("SECRET_KEY", "yousa-dev-secret-key-change-me")
+
+# Agent Bridge — phone agent ↔ Hermes desktop communication
+app.register_blueprint(agent_bridge)
 
 login_manager = LoginManager()
 login_manager.init_app(app)
