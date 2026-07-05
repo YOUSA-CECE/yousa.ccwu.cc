@@ -6,6 +6,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.pdf.PdfRenderer;
+import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.ParcelFileDescriptor;
@@ -16,9 +17,11 @@ import android.webkit.WebView;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.MediaController;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.VideoView;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
@@ -114,6 +117,9 @@ public class FileViewerActivity extends Activity {
                 showPdf();
             } else if (lower.endsWith(".docx")) {
                 showDocx();
+            } else if ((mimeType != null && mimeType.startsWith("video/"))
+                || lower.matches(".*\\.(mp4|webm|3gp|mkv|avi)$")) {
+                showVideo();
             } else if ("text/html".equals(mimeType)
                 || lower.endsWith(".html") || lower.endsWith(".htm")) {
                 showHtml();
@@ -215,9 +221,36 @@ public class FileViewerActivity extends Activity {
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
     }
 
+    private void showVideo() throws Exception {
+        VideoView video = new VideoView(this);
+        video.setVideoURI(fileUri);
+        MediaController controller = new MediaController(this);
+        controller.setAnchorView(video);
+        video.setMediaController(controller);
+        video.setOnErrorListener((mp, what, extra) -> {
+            runOnUiThread(() -> Toast.makeText(this,
+                "无法播放此视频（错误 " + what + "）", Toast.LENGTH_LONG).show());
+            return true;
+        });
+        content.addView(video, new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, dp(360)));
+        video.setOnPreparedListener(mp -> {
+            mp.setLooping(false);
+            int videoWidth = mp.getVideoWidth();
+            int videoHeight = mp.getVideoHeight();
+            if (videoWidth > 0 && videoHeight > 0) {
+                int screenWidth = getResources().getDisplayMetrics().widthPixels - dp(24);
+                int displayHeight = Math.round(screenWidth * videoHeight / (float) videoWidth);
+                displayHeight = Math.min(displayHeight, dp(480));
+                video.getLayoutParams().height = displayHeight;
+                video.requestLayout();
+            }
+        });
+    }
+
     private void showUnsupported() {
         showMessage("此格式暂不支持软件内预览，可点击“其他应用”打开。\n\n"
-            + "软件内支持：图片、PDF、DOCX、文本、Markdown、CSV、JSON、XML 和 HTML。");
+            + "软件内支持：图片、PDF、DOCX、文本、Markdown、CSV、JSON、XML、HTML 和常见视频格式。");
     }
 
     private void showMessage(String message) {
