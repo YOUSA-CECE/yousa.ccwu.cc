@@ -700,24 +700,24 @@ public class FileViewerActivity extends Activity {
         actionRow.setGravity(Gravity.CENTER);
         actionRow.setPadding(0, dp(4), 0, 0);
 
-        Button rewindBtn = iconButton("↩10", dp(48), v -> seekRelative(-SEEK_STEP_MS));
-        rewindBtn.setTextSize(13);
+        Button rewindBtn = iconButton("↩10", dp(40), v -> seekRelative(-SEEK_STEP_MS));
+        rewindBtn.setTextSize(12);
         actionRow.addView(rewindBtn);
 
         // Spacer
         actionRow.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1));
 
         // Center play/pause in bottom bar too
-        Button bottomPlayBtn = iconButton("▶", dp(56), v -> togglePlayPause());
-        bottomPlayBtn.setTextSize(24);
+        Button bottomPlayBtn = iconButton("▶", dp(48), v -> togglePlayPause());
+        bottomPlayBtn.setTextSize(22);
         bottomPlayBtn.setTag("bottom_play");
         actionRow.addView(bottomPlayBtn);
 
         // Spacer
         actionRow.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1));
 
-        Button forwardBtn = iconButton("10↪", dp(48), v -> seekRelative(SEEK_STEP_MS));
-        forwardBtn.setTextSize(13);
+        Button forwardBtn = iconButton("10↪", dp(40), v -> seekRelative(SEEK_STEP_MS));
+        forwardBtn.setTextSize(12);
         actionRow.addView(forwardBtn);
 
         bar.addView(actionRow);
@@ -936,7 +936,7 @@ public class FileViewerActivity extends Activity {
         int screenH = getResources().getDisplayMetrics().heightPixels;
 
         if (isFullscreen) {
-            // Fit to screen maintaining aspect ratio
+            // Fill the screen maintaining aspect ratio — centers automatically in FrameLayout
             float ratio = Math.min(
                 (float) screenW / videoNaturalWidth,
                 (float) screenH / videoNaturalHeight);
@@ -945,11 +945,12 @@ public class FileViewerActivity extends Activity {
             params.width = w;
             params.height = h;
         } else {
-            // Fit to width, capped height
+            // Fit to width, cap height to 60% of screen height
+            int maxH = Math.round(screenH * 0.6f);
             int w = screenW;
             int h = Math.round(w * videoNaturalHeight / (float) videoNaturalWidth);
             params.width = w;
-            params.height = Math.min(h, dp(480));
+            params.height = Math.min(h, maxH);
         }
         videoView.requestLayout();
     }
@@ -1005,15 +1006,15 @@ public class FileViewerActivity extends Activity {
     private Button iconButton(String text, int sizeDp, View.OnClickListener listener) {
         Button btn = new Button(this);
         btn.setText(text);
-        btn.setTextSize(16);
+        btn.setTextSize(14);
         btn.setTextColor(Color.WHITE);
         btn.setAllCaps(false);
         btn.setMinHeight(0);
         btn.setMinWidth(0);
         btn.setMinimumHeight(0);
         btn.setMinimumWidth(0);
-        btn.setPadding(dp(6), dp(6), dp(6), dp(6));
-        btn.setBackground(dpRoundBg(Color.argb(50, 255, 255, 255), (int) (sizeDp * 0.35f)));
+        btn.setPadding(dp(4), dp(4), dp(4), dp(4));
+        btn.setBackground(dpRoundBg(Color.argb(50, 255, 255, 255), (int) (sizeDp * 0.3f)));
         btn.setOnClickListener(listener);
         btn.setLayoutParams(new LinearLayout.LayoutParams(dp(sizeDp), dp(sizeDp)));
         return btn;
@@ -1046,10 +1047,10 @@ public class FileViewerActivity extends Activity {
 
     private Drawable buildThumbDrawable() {
         ShapeDrawable thumb = new ShapeDrawable(new RoundRectShape(
-            new float[]{dp(6), dp(6), dp(6), dp(6), dp(6), dp(6), dp(6), dp(6)}, null, null));
+            new float[]{dp(7), dp(7), dp(7), dp(7), dp(7), dp(7), dp(7), dp(7)}, null, null));
         thumb.getPaint().setColor(Color.rgb(215, 102, 146));
-        thumb.setIntrinsicWidth(dp(12));
-        thumb.setIntrinsicHeight(dp(12));
+        thumb.setIntrinsicWidth(dp(14));
+        thumb.setIntrinsicHeight(dp(14));
         return thumb;
     }
 

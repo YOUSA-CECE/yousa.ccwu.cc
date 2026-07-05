@@ -144,10 +144,11 @@ public class MainActivity extends Activity {
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
         settings.setDatabaseEnabled(true);
-        settings.setUseWideViewPort(true);
-        settings.setLoadWithOverviewMode(false);
-        settings.setSupportZoom(false);
+        settings.setUseWideViewPort(false);
+        settings.setLoadWithOverviewMode(true);
+        settings.setSupportZoom(true);
         settings.setBuiltInZoomControls(false);
+        settings.setDisplayZoomControls(false);
         settings.setAllowFileAccess(false);
         settings.setAllowContentAccess(true);
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
@@ -253,6 +254,14 @@ public class MainActivity extends Activity {
                 animatePageIn();
                 dismissSplash();
                 injectAuthHooks(view, url);
+                // Ensure proper viewport scaling — the website already has a viewport
+                // meta, but on some devices the WebView ignores it without this hint.
+                view.evaluateJavascript(
+                    "(function(){var m=document.querySelector('meta[name=viewport]');"
+                    + "if(m){m.content='width=device-width,initial-scale=1,maximum-scale=3,user-scalable=yes'}"
+                    + "else{var v=document.createElement('meta');v.name='viewport';"
+                    + "v.content='width=device-width,initial-scale=1,maximum-scale=3,user-scalable=yes';"
+                    + "document.head.appendChild(v)}})()", null);
                 schedulePagePrefetch(view, url);
                 if (authNavigationPending && isHome(url)) {
                     authNavigationPending = false;

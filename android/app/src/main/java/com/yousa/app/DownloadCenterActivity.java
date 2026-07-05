@@ -18,19 +18,33 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 
 public class DownloadCenterActivity extends Activity {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private LinearLayout list;
     private boolean active;
+    private final Map<Long, DownloadSpeed> speedTracker = new HashMap<>();
+
+    private static final class DownloadSpeed {
+        long prevBytes;
+        long prevTime;
+        float speed; // bytes per second
+        DownloadSpeed(long bytes, long time) {
+            this.prevBytes = bytes;
+            this.prevTime = time;
+            this.speed = 0;
+        }
+    }
 
     private final Runnable updater = new Runnable() {
         @Override
         public void run() {
             if (!active) return;
             refreshDownloads();
-            handler.postDelayed(this, 800);
+            handler.postDelayed(this, 1000);
         }
     };
 
@@ -44,6 +58,7 @@ public class DownloadCenterActivity extends Activity {
     protected void onResume() {
         super.onResume();
         active = true;
+        speedTracker.clear();
         handler.removeCallbacks(updater);
         handler.post(updater);
     }
@@ -51,6 +66,7 @@ public class DownloadCenterActivity extends Activity {
     @Override
     protected void onPause() {
         active = false;
+        speedTracker.clear();
         handler.removeCallbacks(updater);
         super.onPause();
     }
@@ -62,26 +78,32 @@ public class DownloadCenterActivity extends Activity {
 
         LinearLayout toolbar = new LinearLayout(this);
         toolbar.setGravity(Gravity.CENTER_VERTICAL);
-        toolbar.setPadding(dp(16), dp(14), dp(16), dp(12));
+        toolbar.setPadding(dp(14), dp(12), dp(14), dp(10));
         toolbar.setBackground(gradient(
             Color.rgb(247, 222, 232), Color.rgb(222, 233, 246), 0));
         Button back = new Button(this);
-        back.setText("‹  返回");
-        styleButton(back, Color.WHITE, Color.rgb(53, 63, 76));
+        back.setText("‹ 返回");
+        back.setTextSize(15);
+        back.setTextColor(Color.rgb(53, 63, 76));
+        back.setAllCaps(false);
+        back.setMinHeight(0);
+        back.setMinimumHeight(0);
+        back.setPadding(dp(10), dp(6), dp(10), dp(6));
+        back.setBackground(rounded(Color.WHITE, 16));
         back.setOnClickListener(v -> finish());
         toolbar.addView(back);
         TextView title = new TextView(this);
         title.setText("下载中心");
-        title.setTextSize(22);
+        title.setTextSize(20);
         title.setTextColor(Color.rgb(25, 42, 58));
-        title.setPadding(dp(16), 0, 0, 0);
+        title.setPadding(dp(12), 0, 0, 0);
         toolbar.addView(title);
         root.addView(toolbar);
 
         ScrollView scroll = new ScrollView(this);
         list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);
-        list.setPadding(dp(14), dp(16), dp(14), dp(28));
+        list.setPadding(dp(12), dp(12), dp(12), dp(24));
         scroll.addView(list);
         root.addView(scroll, new LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
@@ -92,7 +114,7 @@ public class DownloadCenterActivity extends Activity {
         long[] ids = ApkDownloadReceiver.getTrackedWebDownloadIds(this);
         list.removeAllViews();
         if (ids.length == 0) {
-            TextView empty = text("还没有下载任务", 16, Color.DKGRAY);
+            TextView empty = text("还没有下载任务", 15, Color.DKGRAY);
             empty.setGravity(Gravity.CENTER);
             empty.setPadding(0, dp(80), 0, 0);
             list.addView(empty);
@@ -123,17 +145,40 @@ public class DownloadCenterActivity extends Activity {
         int reason = cursor.getInt(cursor.getColumnIndexOrThrow(
             DownloadManager.COLUMN_REASON));
 
+        // Calculate real-time speed
+        float speedBps = 0;
+        long now = System.currentTimeMillis();
+        if (status == DownloadManager.STATUS_RUNNING) {
+            DownloadSpeed ds = speedTracker.get(id);
+            if (ds != null) {
+                long dt = now - ds.prevTime;
+                if (dt > 500) {
+                    long dBytes = downloaded - ds.prevBytes;
+                    speedBps = dBytes * 1000f / dt;
+                    ds.speed = speedBps;
+                    ds.prevBytes = downloaded;
+                    ds.prevTime = now;
+                } else {
+                    speedBps = ds.speed;
+                }
+            } else {
+                speedTracker.put(id, new DownloadSpeed(downloaded, now));
+            }
+        } else {
+            speedTracker.remove(id);
+        }
+
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
-        card.setPadding(dp(16), dp(15), dp(16), dp(14));
-        card.setElevation(dp(3));
-        card.setBackground(rounded(Color.WHITE, 18));
+        card.setPadding(dp(14), dp(12), dp(14), dp(12));
+        card.setElevation(dp(2));
+        card.setBackground(rounded(Color.WHITE, 14));
         LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        cardParams.bottomMargin = dp(10);
+        cardParams.bottomMargin = dp(8);
 
         TextView name = text(title == null || title.isEmpty() ? "未命名文件" : title,
-            16, Color.rgb(25, 42, 58));
+            15, Color.rgb(25, 42, 58));
         name.setSingleLine(true);
         card.addView(name);
 
@@ -150,14 +195,19 @@ public class DownloadCenterActivity extends Activity {
             && (status == DownloadManager.STATUS_PENDING
                 || status == DownloadManager.STATUS_RUNNING));
         LinearLayout.LayoutParams progressParams = new LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, dp(8));
-        progressParams.topMargin = dp(10);
+            ViewGroup.LayoutParams.MATCH_PARENT, dp(6));
+        progressParams.topMargin = dp(8);
         card.addView(progress, progressParams);
 
+        // Status + speed row
         LinearLayout footer = new LinearLayout(this);
         footer.setGravity(Gravity.CENTER_VERTICAL);
-        TextView detail = text(statusText(status, reason, percent, downloaded, total),
-            13, Color.rgb(90, 105, 117));
+
+        String statusStr = statusText(status, reason, percent, downloaded, total);
+        if (speedBps > 0 && status == DownloadManager.STATUS_RUNNING) {
+            statusStr += " · " + formatSpeed(speedBps);
+        }
+        TextView detail = text(statusStr, 12, Color.rgb(90, 105, 117));
         footer.addView(detail, new LinearLayout.LayoutParams(
             0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
 
@@ -168,8 +218,8 @@ public class DownloadCenterActivity extends Activity {
         boolean retryable = status == DownloadManager.STATUS_FAILED
             || status == DownloadManager.STATUS_PAUSED;
         action.setText(status == DownloadManager.STATUS_SUCCESSFUL
-            ? "打开" : retryable ? "重新下载" : "取消");
-        styleButton(action,
+            ? "打开" : retryable ? "重试" : "取消");
+        compactButton(action,
             status == DownloadManager.STATUS_SUCCESSFUL || retryable
                 ? Color.rgb(215, 102, 146) : Color.rgb(236, 239, 243),
             status == DownloadManager.STATUS_SUCCESSFUL || retryable
@@ -180,7 +230,7 @@ public class DownloadCenterActivity extends Activity {
         } else if (retryable) {
             action.setOnClickListener(v -> {
                 boolean started = ApkDownloadReceiver.retryWebDownload(this, id);
-                Toast.makeText(this, started ? "已重新开始下载" : "无法重试，请重新点击文件",
+                Toast.makeText(this, started ? "已重新开始下载" : "无法重试",
                     Toast.LENGTH_SHORT).show();
                 refreshDownloads();
             });
@@ -195,10 +245,10 @@ public class DownloadCenterActivity extends Activity {
 
         Button delete = new Button(this);
         delete.setText("删除");
-        styleButton(delete, Color.rgb(246, 232, 236), Color.rgb(176, 65, 91));
+        compactButton(delete, Color.rgb(246, 232, 236), Color.rgb(176, 65, 91));
         LinearLayout.LayoutParams deleteParams = new LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        deleteParams.leftMargin = dp(7);
+        deleteParams.leftMargin = dp(5);
         actions.addView(delete, deleteParams);
         delete.setOnClickListener(v -> {
             ApkDownloadReceiver.deleteWebDownload(this, id);
@@ -210,6 +260,18 @@ public class DownloadCenterActivity extends Activity {
         list.addView(card, cardParams);
     }
 
+    private void compactButton(Button button, int bg, int fg) {
+        button.setTextColor(fg);
+        button.setTextSize(12);
+        button.setAllCaps(false);
+        button.setMinHeight(0);
+        button.setMinimumHeight(0);
+        button.setMinWidth(0);
+        button.setMinimumWidth(0);
+        button.setPadding(dp(10), dp(4), dp(10), dp(4));
+        button.setBackground(rounded(bg, 14));
+    }
+
     private String statusText(int status, int reason, int percent,
                               long downloaded, long total) {
         String size = formatBytes(downloaded) + " / "
@@ -218,42 +280,48 @@ public class DownloadCenterActivity extends Activity {
             case DownloadManager.STATUS_SUCCESSFUL:
                 return "已完成 · " + formatBytes(downloaded);
             case DownloadManager.STATUS_FAILED:
-                return "下载失败 · " + failureReason(reason) + " · " + size;
+                return "失败 · " + failureReason(reason);
             case DownloadManager.STATUS_PAUSED:
-                return "已暂停 · " + pauseReason(reason) + " · " + percent + "% · " + size;
+                return "暂停 · " + pauseReason(reason) + " · " + percent + "%";
             case DownloadManager.STATUS_PENDING:
-                return "等待下载 · " + size;
+                return "等待中 · " + size;
             default:
-                return "下载中 · " + percent + "% · " + size;
+                return percent + "% · " + size;
         }
+    }
+
+    private String formatSpeed(float bps) {
+        if (bps < 1024) return String.format(Locale.CHINA, "%.0f B/s", bps);
+        if (bps < 1024 * 1024)
+            return String.format(Locale.CHINA, "%.1f KB/s", bps / 1024f);
+        return String.format(Locale.CHINA, "%.1f MB/s", bps / 1048576f);
     }
 
     private String pauseReason(int reason) {
         switch (reason) {
             case DownloadManager.PAUSED_WAITING_TO_RETRY:
-                return "连接中断，等待重试";
+                return "等待重试";
             case DownloadManager.PAUSED_WAITING_FOR_NETWORK:
                 return "等待网络";
             case DownloadManager.PAUSED_QUEUED_FOR_WIFI:
                 return "等待 Wi-Fi";
             default:
-                return "系统暂缓下载";
+                return "系统暂缓";
         }
     }
 
     private String failureReason(int reason) {
-        if (reason == DownloadManager.ERROR_INSUFFICIENT_SPACE) return "存储空间不足";
+        if (reason == DownloadManager.ERROR_INSUFFICIENT_SPACE) return "空间不足";
         if (reason == DownloadManager.ERROR_FILE_ALREADY_EXISTS) return "文件已存在";
-        if (reason == DownloadManager.ERROR_CANNOT_RESUME) return "无法继续下载";
-        if (reason >= 400 && reason < 600) return "服务器错误 " + reason;
+        if (reason == DownloadManager.ERROR_CANNOT_RESUME) return "无法续传";
+        if (reason >= 400 && reason < 600) return "服务器 " + reason;
         return "错误 " + reason;
     }
 
     private static String formatBytes(long bytes) {
         if (bytes < 1024) return bytes + " B";
-        if (bytes < 1024 * 1024) {
+        if (bytes < 1024 * 1024)
             return String.format(Locale.CHINA, "%.1f KB", bytes / 1024f);
-        }
         return String.format(Locale.CHINA, "%.1f MB", bytes / 1048576f);
     }
 
@@ -263,15 +331,6 @@ public class DownloadCenterActivity extends Activity {
         view.setTextSize(size);
         view.setTextColor(color);
         return view;
-    }
-
-    private void styleButton(Button button, int background, int foreground) {
-        button.setTextColor(foreground);
-        button.setTextSize(14);
-        button.setAllCaps(false);
-        button.setMinHeight(dp(40));
-        button.setPadding(dp(16), 0, dp(16), 0);
-        button.setBackground(rounded(background, 20));
     }
 
     private GradientDrawable rounded(int color, int radiusDp) {
