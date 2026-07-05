@@ -1615,57 +1615,94 @@ GALLERY_UPLOAD_DIR.mkdir(exist_ok=True)
 @app.route("/gallery/upload", methods=["POST"])
 @login_required
 def gallery_upload():
-    # Upload images to gallery with title and notes.
-    if "file" not in request.files:
+    # Upload images to gallery — supports single file or album (multiple files).
+    # When 'album' is provided, creates a subfolder under 图片/ and puts all
+    # images inside; each image uses the album name as its title prefix.
+    if "file" not in request.files and "files[]" not in request.files:
         return jsonify({"error": "未选择文件"}), 400
 
-    file = request.files["file"]
-    if not file.filename:
-        return jsonify({"error": "文件名为空"}), 400
+    files = request.files.getlist("files[]")
+    if not files or len(files) == 0 or all(f.filename == "" for f in files):
+        # Fallback to single file field
+        single = request.files.get("file")
+        if single and single.filename:
+            files = [single]
+        else:
+            return jsonify({"error": "未选择文件"}), 400
 
+    album = request.form.get("album", "").strip()
     title = request.form.get("title", "").strip()
     notes = request.form.get("notes", "").strip()
     visibility = request.form.get("visibility", "public")
-    ext = Path(file.filename).suffix.lower()
 
-    if ext not in (".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp"):
-        return jsonify({"error": f"不支持的图片格式: {ext}"}), 400
+    # Determine target directory
+    if album:
+        album_safe = re.sub(r'[^\w\u4e00-\u9fff\-_\. ]', "", album)[:60].strip()
+        if not album_safe:
+            album_safe = "未命名图集"
+        target_dir = GALLERY_UPLOAD_DIR / album_safe
+        target_dir.mkdir(parents=True, exist_ok=True)
+    else:
+        target_dir = GALLERY_UPLOAD_DIR
 
-    # Save file with title-based name if provided, sanitized
-    safe_name = file.filename
-    if title:
-        safe_name = re.sub(r'[^\w\u4e00-\u9fff\-_\. ]', '', title)[:50] + ext
-    dest = GALLERY_UPLOAD_DIR / safe_name
+    image_exts = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp"}
+    results = []
+    errors = []
 
-    # Avoid overwriting
-    counter = 1
-    while dest.exists():
-        stem = dest.stem
-        dest = GALLERY_UPLOAD_DIR / f"{stem}_{counter}{ext}"
-        counter += 1
+    for file in files:
+        if not file.filename:
+            continue
+        ext = Path(file.filename).suffix.lower()
+        if ext not in image_exts:
+            errors.append(f"{file.filename}: 不支持的格式")
+            continue
 
-    try:
-        file.save(str(dest))
-        rel = str(dest.relative_to(BASE_DIR)).replace("\\", "/")
-        # Generate thumbnail immediately after upload
-        thumb_ext = ".jpg" if ext in (".jpg", ".jpeg") else ext
-        thumb_abs = _thumb_path(rel).with_suffix(thumb_ext)
-        _make_thumbnail(dest, thumb_abs)
+        # Generate a safe filename
+        if title:
+            safe_stem = re.sub(r'[^\w\u4e00-\u9fff\-_\. ]', "", title)[:50]
+        else:
+            safe_stem = Path(file.filename).stem
+        safe_name = safe_stem + ext
 
-        db = get_db()
-        db.execute(
-            "INSERT INTO upload_meta (type, filepath, title, notes, visibility, uploaded_by) VALUES (?, ?, ?, ?, ?, ?)",
-            ("gallery", rel, title or Path(dest).stem, notes, visibility, current_user.id)
-        )
-        db.commit()
-        return jsonify({
-            "status": "ok",
-            "name": dest.name,
-            "path": rel,
-            "title": title or dest.stem,
-        })
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        dest = target_dir / safe_name
+        counter = 1
+        while dest.exists():
+            dest = target_dir / f"{safe_stem}_{counter}{ext}"
+            counter += 1
+
+        try:
+            file.save(str(dest))
+            rel = str(dest.relative_to(BASE_DIR)).replace("\\", "/")
+            # Generate thumbnail immediately
+            thumb_ext = ".jpg" if ext in (".jpg", ".jpeg") else ext
+            thumb_abs = _thumb_path(rel).with_suffix(thumb_ext)
+            _make_thumbnail(dest, thumb_abs)
+
+            # Individual image title: album context + filename
+            image_title = title or dest.stem
+            db = get_db()
+            db.execute(
+                "INSERT INTO upload_meta (type, filepath, title, notes, visibility, uploaded_by) VALUES (?, ?, ?, ?, ?, ?)",
+                ("gallery", rel, image_title, notes, visibility, current_user.id)
+            )
+            db.commit()
+            results.append({
+                "name": dest.name,
+                "path": rel,
+                "title": image_title,
+            })
+        except Exception as e:
+            errors.append(f"{file.filename}: {str(e)}")
+
+    if not results:
+        return jsonify({"error": errors[0] if errors else "上传失败"}), 500
+
+    return jsonify({
+        "status": "ok",
+        "files": results,
+        "errors": errors if errors else None,
+        "album": album if album else None,
+    })
 
 
 @app.route("/chat/api", methods=["POST"])

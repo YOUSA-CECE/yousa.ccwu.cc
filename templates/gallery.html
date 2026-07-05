@@ -43,18 +43,30 @@
 .upload-drop-zone:hover { border-color:var(--accent);background:rgba(255,255,255,.34); }
 .upload-drop-icon { display:block;font-size:1.6rem;margin-bottom:.3rem; }
 .upload-form label { display: block; font-size: 0.85rem; color: var(--text); margin-bottom: 0.2rem; margin-top: 0.6rem; }
-.upload-form label:first-child { margin-top: 0; }
+.upload-form label:first-of-type { margin-top: 0; }
 .upload-form input, .upload-form textarea { width:100%; padding:0.5rem 0.8rem; border:1px solid var(--border-dark);
   border-radius:var(--radius-sm); background:rgba(255,255,255,0.5); font-size:0.9rem; font-family:inherit;
   box-sizing:border-box; }
 .upload-form textarea { resize:vertical; min-height:60px; }
-.upload-form input[type=file] { padding:0.4rem 0; border:none; background:transparent; }
+.upload-form input[type=file] { position:absolute;opacity:0;width:1px;height:1px;pointer-events:none; }
 .upload-visibility { display:flex;gap:.55rem;margin-top:.3rem; }
 .upload-visibility label { flex:1;display:flex;align-items:center;justify-content:center;gap:.35rem;
   margin:0;padding:.55rem .65rem;border:1px solid var(--border);border-radius:999px;
   background:rgba(255,255,255,.28);font-size:.8rem;cursor:pointer; }
 .upload-visibility input[type=radio] { width:auto;margin:0;padding:0;accent-color:var(--accent); }
 .gallery-submit { background:linear-gradient(135deg,var(--accent),#c782ab) !important;color:#fff !important;border:0 !important; }
+/* Album preview grid */
+.album-preview-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:.5rem;
+  margin:.6rem 0;max-height:320px;overflow-y:auto;padding:.3rem 0; }
+.album-preview-item { position:relative;border-radius:var(--radius-sm);overflow:hidden;
+  background:rgba(255,255,255,.25);aspect-ratio:1; }
+.album-preview-item img { width:100%;height:100%;object-fit:cover;display:block; }
+.album-preview-item .badge { position:absolute;bottom:0;left:0;right:0;
+  background:linear-gradient(transparent,rgba(0,0,0,.6));padding:.5rem .4rem .35rem;
+  font-size:.7rem;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+.album-preview-count { font-size:.78rem;color:var(--text-muted);margin-top:.3rem;text-align:center; }
+.album-field-row { display:flex;gap:.6rem;align-items:center; }
+.album-field-row input { flex:1; }
 
 /* Lightbox */
 .lightbox { display: none; position: fixed; z-index: 9999; left:0; top:0; width:100%; height:100%;
@@ -144,15 +156,20 @@
              ondragleave="this.style.borderColor='var(--border-dark)'"
              ondrop="handleDrop(event)">
             <span class="upload-drop-icon">🌸</span>
-            <strong style="display:block;color:var(--text);font-size:.9rem">选择一张喜欢的照片</strong>
-            <p style="margin:.25rem 0 0;color:var(--text-muted);font-size:.78rem">支持 JPG、PNG、GIF 和 WebP</p>
+            <strong style="display:block;color:var(--text);font-size:.9rem">选择多张照片或拖拽到此处</strong>
+            <p style="margin:.25rem 0 0;color:var(--text-muted);font-size:.78rem">支持 JPG、PNG、GIF、WebP，可一次上传整个图集</p>
         </div>
-        <input type="file" id="upload-file" accept="image/png,image/jpeg,image/gif,image/webp" style="display:none"
-               onchange="galleryFilesSelected(this)">
+        <input type="file" id="upload-file" accept="image/png,image/jpeg,image/gif,image/webp" multiple
+               onchange="handleFileSelect(this.files)">
+        <div class="album-preview-grid" id="album-preview"></div>
+        <div class="album-preview-count" id="album-count"></div>
+        <div class="album-field-row">
+            <input type="text" id="upload-album" placeholder="图集名称（选填，创建文件夹）" style="flex:1">
+        </div>
         <label>标题</label>
-        <input type="text" id="upload-title" placeholder="照片标题（可选）">
+        <input type="text" id="upload-title" placeholder="图片标题（选填，不填则用文件名）">
         <label>备注</label>
-        <textarea id="upload-notes" placeholder="添加备注描述…（可选）"></textarea>
+        <textarea id="upload-notes" placeholder="添加备注描述…（用于所有图片）"></textarea>
         <label style="margin-top:0.5rem">谁可以看</label>
         <div class="upload-visibility">
             <label>
@@ -162,8 +179,14 @@
                 <input type="radio" name="visibility" value="private"> 🔒 仅自己
             </label>
         </div>
-        <button class="form-btn form-btn-sm gallery-submit" type="button" id="gallery-confirm-btn" style="margin-top:0.7rem" onclick="uploadPhoto()">确认上传</button>
+        <button class="form-btn form-btn-sm gallery-submit" type="button" id="gallery-confirm-btn" style="margin-top:0.7rem;display:none" onclick="uploadAlbum()">确认上传</button>
         <div id="upload-status" style="margin-top:0.4rem;font-size:0.82rem;color:var(--text-muted)"></div>
+        <div id="upload-progress" style="display:none;margin-top:0.6rem">
+            <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.2rem" id="upload-progress-text">准备中…</div>
+            <div style="background:var(--border-dark);border-radius:999px;height:6px;overflow:hidden">
+                <div id="upload-progress-bar" style="background:var(--accent);height:100%;width:0%;border-radius:999px;transition:width 0.3s"></div>
+            </div>
+        </div>
     </div>
     {% endif %}
 
@@ -325,25 +348,54 @@
 })();
 
 var canUpload = {{ 'true' if current_user.is_authenticated else 'false' }};
+var pendingFiles = [];
 
 function toggleUploadForm() {
-    document.getElementById('upload-form').classList.toggle('open');
+    var form = document.getElementById('upload-form');
+    form.classList.toggle('open');
+    if (!form.classList.contains('open')) {
+        pendingFiles = [];
+        document.getElementById('album-preview').innerHTML = '';
+        document.getElementById('album-count').textContent = '';
+        document.getElementById('gallery-confirm-btn').style.display = 'none';
+    }
 }
 
-// Make drop zone clickable
+// Make drop zone clickable — use label for hidden input to avoid double-trigger
 var dropZone = document.getElementById('drop-zone');
 if (dropZone) {
-    dropZone.addEventListener('click', function() {
-        document.getElementById('upload-file').click();
+    dropZone.addEventListener('click', function(e) {
+        if (e.target === dropZone || e.target.closest('.upload-drop-zone')) {
+            document.getElementById('upload-file').click();
+        }
     });
 }
 
-function uploadSelected() {
-    uploadPhoto();
+function handleFileSelect(files) {
+    if (!files || !files.length) return;
+    pendingFiles = Array.prototype.slice.call(files);
+    renderAlbumPreview();
+    document.getElementById('gallery-confirm-btn').style.display = 'inline-block';
 }
 
-function galleryFilesSelected(input) {
-    document.getElementById('gallery-confirm-btn').style.display = 'inline-block';
+function renderAlbumPreview() {
+    var grid = document.getElementById('album-preview');
+    var count = document.getElementById('album-count');
+    grid.innerHTML = '';
+    count.textContent = '已选择 ' + pendingFiles.length + ' 张图片';
+    pendingFiles.forEach(function(file, idx) {
+        var item = document.createElement('div');
+        item.className = 'album-preview-item';
+        var img = document.createElement('img');
+        img.src = URL.createObjectURL(file);
+        img.alt = file.name;
+        var badge = document.createElement('div');
+        badge.className = 'badge';
+        badge.textContent = file.name.length > 18 ? file.name.slice(0, 16) + '…' : file.name;
+        item.appendChild(img);
+        item.appendChild(badge);
+        grid.appendChild(item);
+    });
 }
 
 function handleDrop(e) {
@@ -351,42 +403,95 @@ function handleDrop(e) {
     e.stopPropagation();
     var zone = document.getElementById('drop-zone');
     zone.style.borderColor = 'var(--border-dark)';
-    var file = e.dataTransfer.files[0];
-    if (!file) return;
-    if (!file.type.match('image.*')) { alert('请拖入图片文件'); return; }
-    document.getElementById('upload-file').files = e.dataTransfer.files;
+    var files = e.dataTransfer.files;
+    if (!files || !files.length) return;
+    // Filter only images
+    var imageFiles = Array.prototype.slice.call(files).filter(function(f) {
+        return f.type.match('image.*');
+    });
+    if (!imageFiles.length) {
+        document.getElementById('upload-status').textContent = '❌ 请拖入图片文件';
+        return;
+    }
+    pendingFiles = imageFiles;
+    renderAlbumPreview();
     document.getElementById('gallery-confirm-btn').style.display = 'inline-block';
 }
 
-function uploadPhoto() {
-    var fileInput = document.getElementById('upload-file');
-    var file = fileInput.files[0];
-    if (!file) { alert('请选择图片'); return; }
+async function uploadAlbum() {
+    if (!pendingFiles || !pendingFiles.length) {
+        document.getElementById('upload-status').textContent = '❌ 请选择图片';
+        return;
+    }
 
-    var formData = new FormData();
-    formData.append('file', file);
-    formData.append('title', document.getElementById('upload-title').value.trim());
-    formData.append('notes', document.getElementById('upload-notes').value.trim());
-    formData.append('visibility', document.querySelector('input[name=visibility]:checked').value);
+    var btn = document.getElementById('gallery-confirm-btn');
+    btn.disabled = true;
+    btn.textContent = '⏳ 上传中…';
 
-    var status = document.getElementById('upload-status');
-    status.textContent = '⏳ 上传中…';
+    var total = pendingFiles.length;
+    var completed = 0;
+    var errors = [];
+    var album = document.getElementById('upload-album').value.trim();
+    var title = document.getElementById('upload-title').value.trim();
+    var notes = document.getElementById('upload-notes').value.trim();
+    var visibility = document.querySelector('input[name=visibility]:checked').value;
 
-    fetch('/gallery/upload', { method: 'POST', body: formData })
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-        if (data.status === 'ok') {
-            status.innerHTML = '✅ 上传成功！<a href="/gallery/" style="color:var(--accent)">刷新查看</a>';
-            fileInput.value = '';
-            document.getElementById('upload-title').value = '';
-            document.getElementById('upload-notes').value = '';
-        } else {
-            status.textContent = '❌ ' + (data.error || '上传失败');
+    var progressEl = document.getElementById('upload-progress');
+    var progressText = document.getElementById('upload-progress-text');
+    var progressBar = document.getElementById('upload-progress-bar');
+    var statusEl = document.getElementById('upload-status');
+    progressEl.style.display = 'block';
+
+    // Upload files sequentially with progress
+    for (var i = 0; i < total; i++) {
+        var file = pendingFiles[i];
+        progressText.textContent = '[' + (i + 1) + '/' + total + '] ' + file.name;
+        progressBar.style.width = Math.round(completed / total * 100) + '%';
+
+        var fd = new FormData();
+        fd.append('files[]', file);
+        fd.append('album', album);
+        fd.append('title', title);
+        fd.append('notes', notes);
+        fd.append('visibility', visibility);
+
+        try {
+            var resp = await fetch('/gallery/upload', { method: 'POST', body: fd });
+            var data = await resp.json();
+            if (data.status === 'ok') {
+                completed++;
+                statusEl.textContent = '✅ ' + completed + '/' + total + ' 完成';
+            } else {
+                errors.push(file.name + ': ' + (data.error || '失败'));
+                statusEl.textContent = '⚠️ ' + (completed + errors.length) + '/' + total + '（' + errors.length + ' 个错误）';
+            }
+        } catch (err) {
+            errors.push(file.name + ': 网络错误');
+            statusEl.textContent = '⚠️ ' + (completed + errors.length) + '/' + total + '（网络错误）';
         }
-    })
-    .catch(function(err) {
-        status.textContent = '❌ 网络错误';
-    });
+        progressBar.style.width = Math.round((i + 1) / total * 100) + '%';
+    }
+
+    progressEl.style.display = 'none';
+    btn.disabled = false;
+
+    if (completed === total) {
+        statusEl.innerHTML = '✅ 全部上传成功！<a href=\"/gallery/\" style=\"color:var(--accent)\">刷新查看</a>';
+        document.getElementById('upload-file').value = '';
+        document.getElementById('upload-album').value = '';
+        document.getElementById('upload-title').value = '';
+        document.getElementById('upload-notes').value = '';
+        pendingFiles = [];
+        document.getElementById('album-preview').innerHTML = '';
+        document.getElementById('album-count').textContent = '';
+        btn.style.display = 'none';
+    } else if (completed > 0) {
+        statusEl.innerHTML = '⚠️ 部分成功（' + completed + '/' + total + '），<a href=\"/gallery/\" style=\"color:var(--accent)\">刷新查看</a>';
+        if (errors.length) statusEl.innerHTML += '<br><span style="font-size:.75rem;color:#e74c3c">错误：' + errors.join('; ') + '</span>';
+    } else {
+        statusEl.textContent = '❌ ' + (errors[0] || '上传失败');
+        btn.textContent = '确认上传';
+    }
 }
 
 var currentCommentTarget = '';
