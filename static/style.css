@@ -32,6 +32,8 @@
 
 html {
     font-size: 15px;
+    overflow-x: hidden;
+    max-width: 100vw;
 }
 
 body {
@@ -47,6 +49,7 @@ body {
     flex-direction: column;
     line-height: 1.65;
     overflow-x: hidden;
+    max-width: 100vw;
     padding-top: var(--sat);
     padding-right: var(--sar);
     padding-bottom: var(--sab);
