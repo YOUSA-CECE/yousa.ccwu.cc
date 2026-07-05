@@ -135,6 +135,16 @@
             <input type="text" id="upload-title" placeholder="文件标题">
             <label style="font-size:0.8rem;color:var(--text-muted);margin-top:0.4rem;display:block">备注（可选）</label>
             <textarea id="upload-notes" placeholder="备注描述…" rows="2"></textarea>
+            {% if is_admin %}
+            <div class="upload-visibility" style="display:flex;gap:.55rem;margin-top:.4rem">
+                <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:.35rem;font-size:.82rem;cursor:pointer;padding:.25rem;border:1px solid var(--border-dark);border-radius:var(--radius-sm);background:rgba(255,255,255,0.3)">
+                    <input type="radio" name="cloud-visibility" value="public" checked> 🌍 所有人可见
+                </label>
+                <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:.35rem;font-size:.82rem;cursor:pointer;padding:.25rem;border:1px solid var(--border-dark);border-radius:var(--radius-sm);background:rgba(255,255,255,0.3)">
+                    <input type="radio" name="cloud-visibility" value="admin_only"> 🔒 仅管理员
+                </label>
+            </div>
+            {% endif %}
         </div>
         <div class="upload-result" id="upload-result"></div>
         <div class="upload-progress" id="upload-progress" style="display:none;margin-top:0.6rem">
@@ -189,6 +199,9 @@
                     <a href="/cloud/preview/{{ f.path }}">{{ meta.get('title') or f.name }}</a>
                     {% else %}
                     <a href="/files/{{ f.path }}" download>{{ meta.get('title') or f.name }}</a>
+                    {% endif %}
+                    {% if is_admin and meta.get('visibility') == 'admin_only' %}
+                    <span style="font-size:0.7rem;color:var(--accent-2);margin-left:0.35rem">🔒</span>
                     {% endif %}
                 </span>
                 <span class="sub">{{ f.size_hr }} · {{ f.modified }}</span>
@@ -302,12 +315,12 @@ function diagnoseUpload(stats) {
     return '诊断：主要受客户端或网络带宽限制';
 }
 
-async function uploadOneFile(file, title, notes, onProgress) {
+async function uploadOneFile(file, title, notes, visibility, onProgress) {
     var uploadStarted = performance.now();
     var init = await jsonRequest('/cloud/upload/init', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({name:file.name, size:file.size, path:currentPath, title:title, notes:notes})
+        body: JSON.stringify({name:file.name, size:file.size, path:currentPath, title:title, notes:notes, visibility:visibility})
     });
     var state = {
         nextPart: 0, inFlight: 0, completed: 0, completedBytes: 0,
@@ -340,7 +353,7 @@ async function uploadOneFile(file, title, notes, onProgress) {
         state.currentSpeed = speed;
         if (state.previousWindowSpeed) {
             if (speed > state.previousWindowSpeed * 1.08 && state.retries === 0) {
-                state.concurrency = Math.min(3, state.concurrency + 1);
+                state.concurrency = Math.min(5, state.concurrency + 1);
             } else if (speed < state.previousWindowSpeed * 0.78) {
                 state.concurrency = Math.max(1, state.concurrency - 1);
                 state.concurrencyReduced = true;
@@ -428,6 +441,8 @@ async function uploadFiles(files) {
     if (!files || !files.length) return;
     var title = (document.getElementById('upload-title').value || '').trim();
     var notes = (document.getElementById('upload-notes').value || '').trim();
+    var visibilityEl = document.querySelector('input[name=cloud-visibility]:checked');
+    var visibility = visibilityEl ? visibilityEl.value : 'public';
     var rd = document.getElementById('upload-result');
     rd.innerHTML = '';
     var succeeded = 0;
@@ -438,7 +453,7 @@ async function uploadFiles(files) {
         row.textContent = '⏳ ' + file.name + '：准备中…';
         rd.appendChild(row);
         try {
-            var result = await uploadOneFile(file, title, notes, function(stats) {
+            var result = await uploadOneFile(file, title, notes, visibility, function(stats) {
                 var percent = Math.min(100, Math.round(stats.progress * 100));
                 row.textContent = '⏳ ' + file.name + '：' + percent + '%';
                 document.getElementById('upload-progress').style.display = 'block';

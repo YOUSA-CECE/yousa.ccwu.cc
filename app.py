@@ -660,6 +660,15 @@ def search_site(query, include_files=False, limit=40):
                         continue
                     full = Path(root) / fname
                     rel = str(full.relative_to(base)).replace("\\", "/")
+                    # Skip admin_only files for non-admin users
+                    if not (current_user.is_authenticated and current_user.is_admin):
+                        meta = db.execute(
+                            "SELECT visibility FROM upload_meta "
+                            "WHERE type='cloud' AND filepath=? ORDER BY id DESC LIMIT 1",
+                            (rel,),
+                        ).fetchone()
+                        if meta and (meta["visibility"] or "public") == "admin_only":
+                            continue
                     results.append({
                         "type": "文件",
                         "title": fname,
@@ -1053,16 +1062,22 @@ def cloud_drive(subpath=None):
     # Load upload metadata from DB
     db = get_db()
     meta_rows = db.execute(
-        "SELECT m.filepath, m.title, m.notes, m.created_at, u.nickname AS uploaded_by_name "
+        "SELECT m.filepath, m.title, m.notes, m.visibility, m.created_at, u.nickname AS uploaded_by_name "
         "FROM upload_meta m "
         "LEFT JOIN users u ON m.uploaded_by = u.id "
         "WHERE m.type='cloud' ORDER BY m.created_at DESC"
     ).fetchall()
     upload_meta = {row["filepath"]: {
         "title": row["title"], "notes": row["notes"],
+        "visibility": row["visibility"] or "public",
         "uploaded_by": row["uploaded_by_name"] or "未知",
         "created_at": row["created_at"]
     } for row in meta_rows}
+
+    # Filter: hide admin_only files from non-admin users
+    is_admin = current_user.is_authenticated and current_user.is_admin
+    if not is_admin:
+        files = [f for f in files if upload_meta.get(f["path"], {}).get("visibility", "public") != "admin_only"]
 
     current_path = subpath.replace("\\", "/") if subpath else ""
     parts = current_path.split("/") if current_path else []
@@ -1075,7 +1090,7 @@ def cloud_drive(subpath=None):
     return render_template("cloud.html", dirs=dirs, files=files,
                            current_path=current_path, breadcrumbs=breadcrumbs,
                            total_size=format_size(total_bytes),
-                           is_admin=current_user.is_admin,
+                           is_admin=is_admin,
                            upload_meta=upload_meta)
 
 
@@ -1142,6 +1157,7 @@ def cloud_upload_init():
         "parts": total_parts, "user_id": current_user.id,
         "title": str(data.get("title", "")).strip(),
         "notes": str(data.get("notes", "")).strip(),
+        "visibility": str(data.get("visibility", "public")).strip(),
         "created_at": time.time(),
     }
     (upload_dir / "manifest.json").write_text(
@@ -1228,12 +1244,13 @@ def cloud_upload_complete():
         os.replace(str(assembling), str(dest))
         merge_ms = (time.perf_counter() - merge_started) * 1000
         rel = str(dest.relative_to(base)).replace("\\", "/")
-        if manifest["title"] or manifest["notes"]:
+        if manifest["title"] or manifest["notes"] or manifest.get("visibility", "public") != "public":
             db = get_db()
             db.execute(
-                "INSERT INTO upload_meta (type, filepath, title, notes, uploaded_by) "
-                "VALUES (?, ?, ?, ?, ?)",
-                ("cloud", rel, manifest["title"], manifest["notes"], current_user.id),
+                "INSERT INTO upload_meta (type, filepath, title, notes, visibility, uploaded_by) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                ("cloud", rel, manifest["title"], manifest["notes"],
+                 manifest.get("visibility", "public"), current_user.id),
             )
             db.commit()
         shutil.rmtree(upload_dir, ignore_errors=True)
@@ -1269,6 +1286,7 @@ def cloud_upload():
     uploaded = request.files.getlist("file")
     title = request.form.get("title", "").strip()
     notes = request.form.get("notes", "").strip()
+    visibility = request.form.get("visibility", "public").strip()
     results = []
     for f in uploaded:
         if not f.filename:
@@ -1278,11 +1296,11 @@ def cloud_upload():
             f.save(str(dest))
             # Save metadata
             rel = str(dest.relative_to(base)).replace("\\", "/")
-            if title or notes:
+            if title or notes or visibility != "public":
                 db = get_db()
                 db.execute(
-                    "INSERT INTO upload_meta (type, filepath, title, notes, uploaded_by) VALUES (?, ?, ?, ?, ?)",
-                    ("cloud", rel, title, notes, current_user.id)
+                    "INSERT INTO upload_meta (type, filepath, title, notes, visibility, uploaded_by) VALUES (?, ?, ?, ?, ?, ?)",
+                    ("cloud", rel, title, notes, visibility, current_user.id)
                 )
                 db.commit()
             results.append({"name": f.filename, "status": "成功", "size": format_size(dest.stat().st_size)})
@@ -1775,6 +1793,17 @@ def file_browser(subpath=None):
         abort(404)
 
     if target.is_file():
+        rel = str(target.relative_to(base)).replace("\\", "/")
+        # Check visibility: block admin_only files from non-admin users
+        meta = get_db().execute(
+            "SELECT visibility FROM upload_meta "
+            "WHERE type='cloud' AND filepath=? ORDER BY id DESC LIMIT 1",
+            (rel,),
+        ).fetchone()
+        if meta and (meta["visibility"] or "public") == "admin_only" and not (
+            current_user.is_authenticated and current_user.is_admin
+        ):
+            abort(404)
         return send_from_directory(
             target.parent,
             target.name,
@@ -1784,6 +1813,7 @@ def file_browser(subpath=None):
         )
 
     entries = []
+    is_admin = current_user.is_authenticated and current_user.is_admin
     try:
         for entry in sorted(target.iterdir(), key=lambda p: (p.is_file(), p.name.lower())):
             if entry.name.startswith("."):
@@ -1792,6 +1822,14 @@ def file_browser(subpath=None):
             stat = entry.stat()
             size = stat.st_size
             modified = datetime.fromtimestamp(stat.st_mtime)
+            if not is_admin and entry.is_file():
+                meta = get_db().execute(
+                    "SELECT visibility FROM upload_meta "
+                    "WHERE type='cloud' AND filepath=? ORDER BY id DESC LIMIT 1",
+                    (rel,),
+                ).fetchone()
+                if meta and (meta["visibility"] or "public") == "admin_only":
+                    continue
             entries.append({
                 "name": entry.name,
                 "path": rel,
