@@ -414,6 +414,8 @@ def apply_cache_policy(response):
         response.headers["Cache-Control"] = (
             "public, s-maxage=60, max-age=0, stale-while-revalidate=900"
         )
+        # CDN-Cache-Control 显式告知 Cloudflare 边缘缓存 HTML
+        response.headers["CDN-Cache-Control"] = "public, max-age=60"
         vary = response.headers.get("Vary", "")
         vary_values = {item.strip() for item in vary.split(",") if item.strip()}
         vary_values.add("Cookie")
