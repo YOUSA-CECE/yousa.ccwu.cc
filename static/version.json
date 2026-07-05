@@ -2,6 +2,6 @@
   "versionCode": 23,
   "versionName": "1.1.11",
   "apkUrl": "https://yousa.ccwu.cc/static/yousa-android-v1.1.11.apk",
-  "apkSizeBytes": 55337,
-  "changelog": "新增常见视频格式预览（MP4/WebM/3GP/MKV/AVI），支持播放控制。下载完成自动打开视频预览。"
+  "apkSizeBytes": 104494,
+  "changelog": "全面升级视频播放器：手势控制（亮度/音量/快进快退）、双击左右跳转10秒、变速播放（0.5×-2×）、全屏沉浸模式、屏幕锁定、播放进度条拖动、自动隐藏控制栏。新增常见视频格式预览（MP4/WebM/3GP/MKV/AVI）。"
 }
