@@ -1,7 +1,7 @@
 {
-  "versionCode": 23,
-  "versionName": "1.1.11",
-  "apkUrl": "https://yousa.ccwu.cc/static/yousa-android-v1.1.11.apk",
-  "apkSizeBytes": 55337,
-  "changelog": "新增常见视频格式预览（MP4/WebM/3GP/MKV/AVI），支持播放控制。下载完成自动打开视频预览。"
+  "versionCode": 22,
+  "versionName": "1.1.10",
+  "apkUrl": "https://yousa.ccwu.cc/static/yousa-android-v1.1.10.apk",
+  "apkSizeBytes": 54097,
+  "changelog": "下载中心为所有任务增加删除按钮；删除时同步清理系统文件、下载任务和 App 内记录，修复任务无法删除或重新出现的问题。"
 }
