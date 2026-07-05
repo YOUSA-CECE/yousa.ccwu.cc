@@ -1,7 +1,7 @@
 {
-  "versionCode": 27,
-  "versionName": "1.1.15",
-  "apkUrl": "https://yousa.ccwu.cc/static/yousa-android-v1.1.15.apk",
-  "apkSizeBytes": 68509,
-  "changelog": "视频播放器 UI 全面重设计：参考 YouTube/Bilibili 风格，控制栏改为顶部+底部渐变半透明背景；播放按钮改为粉色圆形半透明；跳转按钮改为圆角半透明白色；底部播放按钮 42dp 圆形粉色；居中大播放按钮 56dp 半透粉色圆；进度条加阴影优化；返回/锁定按钮无背景更简洁。"
+  "versionCode": 28,
+  "versionName": "1.1.16",
+  "apkUrl": "https://yousa.ccwu.cc/static/yousa-android-v1.1.16.apk",
+  "apkSizeBytes": 68578,
+  "changelog": "修复首页 DPI 适配：setUseWideViewPort 改回 true（配合 setLoadWithOverviewMode(true) 才能生效），移除多余的 JS viewport 注入避免冲突。"
 }
