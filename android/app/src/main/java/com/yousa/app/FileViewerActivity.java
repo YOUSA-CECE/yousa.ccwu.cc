@@ -4,6 +4,8 @@ import android.app.Activity;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.ColorStateList;
+import android.content.res.Configuration;
 import android.database.ContentObserver;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -351,8 +353,10 @@ public class FileViewerActivity extends Activity {
 
         videoView = new VideoView(this);
         videoView.setVideoURI(fileUri);
-        videoRoot.addView(videoView, new FrameLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        FrameLayout.LayoutParams videoParams = new FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+        videoParams.gravity = Gravity.CENTER;
+        videoRoot.addView(videoView, videoParams);
 
         // ── Control overlay (sits on top of video) ──
         controlOverlay = buildControlOverlay();
@@ -374,7 +378,7 @@ public class FileViewerActivity extends Activity {
         // ── Center play/pause ──
         centerPlayBtn = buildCenterPlayButton();
         FrameLayout.LayoutParams centerParams = new FrameLayout.LayoutParams(
-            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            dp(64), dp(64));
         centerParams.gravity = Gravity.CENTER;
         controlOverlay.addView(centerPlayBtn, centerParams);
 
@@ -649,6 +653,7 @@ public class FileViewerActivity extends Activity {
         titleView.setText(fileName);
         titleView.setTextSize(14);
         titleView.setTextColor(Color.WHITE);
+        titleView.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
         titleView.setSingleLine(true);
         titleView.setPadding(dp(6), 0, dp(6), 0);
         titleView.setShadowLayer(3, 0, 1, Color.argb(80, 0, 0, 0));
@@ -671,7 +676,7 @@ public class FileViewerActivity extends Activity {
         bar.addView(speedBtn);
 
         Button lockBtn = new Button(this);
-        lockBtn.setText("🔒");
+        lockBtn.setText("锁");
         lockBtn.setTextSize(14);
         lockBtn.setTextColor(Color.WHITE);
         lockBtn.setAllCaps(false);
@@ -692,9 +697,11 @@ public class FileViewerActivity extends Activity {
     }
 
     private View buildBottomBar() {
+        boolean landscape = getResources().getConfiguration().orientation
+            == Configuration.ORIENTATION_LANDSCAPE;
         LinearLayout bar = new LinearLayout(this);
         bar.setOrientation(LinearLayout.VERTICAL);
-        bar.setPadding(dp(6), dp(4), dp(6), dp(10));
+        bar.setPadding(dp(6), dp(2), dp(6), landscape ? dp(4) : dp(10));
         bar.setGravity(Gravity.CENTER_VERTICAL);
 
         // Seek row: time | --------------- | time | fullscreen
@@ -705,6 +712,7 @@ public class FileViewerActivity extends Activity {
         currentTimeText.setText("0:00");
         currentTimeText.setTextSize(12);
         currentTimeText.setTextColor(Color.argb(200, 255, 255, 255));
+        currentTimeText.setTypeface(Typeface.create("sans-serif", Typeface.NORMAL));
         currentTimeText.setPadding(dp(4), 0, dp(4), 0);
         currentTimeText.setShadowLayer(2, 0, 1, Color.argb(60, 0, 0, 0));
         seekRow.addView(currentTimeText);
@@ -712,8 +720,12 @@ public class FileViewerActivity extends Activity {
         seekBar = new SeekBar(this);
         seekBar.setMax(1);
         seekBar.setProgress(0);
-        seekBar.setProgressDrawable(buildSeekBarDrawable());
-        seekBar.setThumb(buildThumbDrawable());
+        seekBar.setProgressTintList(
+            ColorStateList.valueOf(Color.rgb(224, 91, 143)));
+        seekBar.setProgressBackgroundTintList(
+            ColorStateList.valueOf(Color.argb(110, 255, 255, 255)));
+        seekBar.setThumbTintList(
+            ColorStateList.valueOf(Color.rgb(244, 173, 201)));
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar sb, int progress, boolean fromUser) {
@@ -739,6 +751,7 @@ public class FileViewerActivity extends Activity {
         totalTimeText.setText("0:00");
         totalTimeText.setTextSize(12);
         totalTimeText.setTextColor(Color.argb(200, 255, 255, 255));
+        totalTimeText.setTypeface(Typeface.create("sans-serif", Typeface.NORMAL));
         totalTimeText.setPadding(dp(4), 0, dp(4), 0);
         totalTimeText.setShadowLayer(2, 0, 1, Color.argb(60, 0, 0, 0));
         seekRow.addView(totalTimeText);
@@ -766,7 +779,7 @@ public class FileViewerActivity extends Activity {
 
         // Back 10s
         Button rewindBtn = new Button(this);
-        rewindBtn.setText("↩ 10");
+        rewindBtn.setText("↶ 10");
         rewindBtn.setTextSize(12);
         rewindBtn.setTextColor(Color.WHITE);
         rewindBtn.setAllCaps(false);
@@ -775,7 +788,7 @@ public class FileViewerActivity extends Activity {
         rewindBtn.setMinWidth(0);
         rewindBtn.setMinimumWidth(0);
         rewindBtn.setPadding(dp(10), dp(6), dp(10), dp(6));
-        rewindBtn.setBackground(dpRoundBg(Color.argb(60, 255, 255, 255), 16));
+        rewindBtn.setBackground(dpRoundBg(Color.argb(72, 255, 255, 255), 18));
         rewindBtn.setOnClickListener(v -> seekRelative(-SEEK_STEP_MS));
         actionRow.addView(rewindBtn);
 
@@ -786,22 +799,24 @@ public class FileViewerActivity extends Activity {
         bottomPlayBtn.setText("▶");
         bottomPlayBtn.setTextSize(20);
         bottomPlayBtn.setTextColor(Color.WHITE);
+        bottomPlayBtn.setTypeface(
+            Typeface.create("sans-serif-medium", Typeface.NORMAL));
         bottomPlayBtn.setAllCaps(false);
         bottomPlayBtn.setMinHeight(0);
         bottomPlayBtn.setMinimumHeight(0);
         bottomPlayBtn.setMinWidth(0);
         bottomPlayBtn.setMinimumWidth(0);
         bottomPlayBtn.setPadding(0, 0, 0, 0);
-        bottomPlayBtn.setBackground(dpRoundBg(Color.argb(200, 215, 102, 146), dp(20)));
+        bottomPlayBtn.setBackground(dpRoundBg(Color.rgb(224, 91, 143), 24));
         bottomPlayBtn.setTag("bottom_play");
         bottomPlayBtn.setOnClickListener(v -> togglePlayPause());
-        actionRow.addView(bottomPlayBtn, new LinearLayout.LayoutParams(dp(42), dp(42)));
+        actionRow.addView(bottomPlayBtn, new LinearLayout.LayoutParams(dp(48), dp(48)));
 
         actionRow.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1));
 
         // Forward 10s
         Button forwardBtn = new Button(this);
-        forwardBtn.setText("10 ↩");
+        forwardBtn.setText("10 ↷");
         forwardBtn.setTextSize(12);
         forwardBtn.setTextColor(Color.WHITE);
         forwardBtn.setAllCaps(false);
@@ -810,26 +825,29 @@ public class FileViewerActivity extends Activity {
         forwardBtn.setMinWidth(0);
         forwardBtn.setMinimumWidth(0);
         forwardBtn.setPadding(dp(10), dp(6), dp(10), dp(6));
-        forwardBtn.setBackground(dpRoundBg(Color.argb(60, 255, 255, 255), 16));
+        forwardBtn.setBackground(dpRoundBg(Color.argb(72, 255, 255, 255), 18));
         forwardBtn.setOnClickListener(v -> seekRelative(SEEK_STEP_MS));
         actionRow.addView(forwardBtn);
 
-        bar.addView(actionRow);
+        if (!landscape) {
+            bar.addView(actionRow);
+        }
         return bar;
     }
 
     private View buildCenterPlayButton() {
         Button btn = new Button(this);
         btn.setText("▶");
-        btn.setTextSize(36);
+        btn.setTextSize(30);
         btn.setTextColor(Color.WHITE);
+        btn.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
         btn.setAllCaps(false);
         btn.setMinHeight(0);
         btn.setMinimumHeight(0);
         btn.setMinWidth(0);
         btn.setMinimumWidth(0);
         btn.setPadding(0, 0, 0, 0);
-        btn.setBackground(dpRoundBg(Color.argb(160, 215, 102, 146), dp(28)));
+        btn.setBackground(dpRoundBg(Color.argb(225, 224, 91, 143), 32));
         btn.setVisibility(View.GONE);
         btn.setOnClickListener(v -> togglePlayPause());
         btn.setTag("center_play");
@@ -941,7 +959,7 @@ public class FileViewerActivity extends Activity {
 
     private void refreshPlayPauseState() {
         boolean playing = videoView != null && videoView.isPlaying();
-        String icon = playing ? "⏸" : videoEnded ? "↻" : "▶";
+        String icon = playing ? "Ⅱ" : videoEnded ? "↻" : "▶";
         // Update center button
         if (centerPlayBtn instanceof Button) {
             ((Button) centerPlayBtn).setText(icon);
@@ -950,7 +968,8 @@ public class FileViewerActivity extends Activity {
         if (bottomBar != null) {
             View bottomPlay = bottomBar.findViewWithTag("bottom_play");
             if (bottomPlay instanceof Button) {
-                ((Button) bottomPlay).setText(playing ? "⏸" : videoEnded ? "↻" : "▶");
+                ((Button) bottomPlay).setText(
+                    playing ? "Ⅱ" : videoEnded ? "↻" : "▶");
             }
         }
         if (playing) hideGestureLabel();
@@ -967,22 +986,30 @@ public class FileViewerActivity extends Activity {
     // ── Controls visibility ───────────────────────────────────────
 
     private void showControls() {
+        controlOverlay.animate().cancel();
         controlsVisible = true;
         controlOverlay.setVisibility(View.VISIBLE);
-        controlOverlay.setAlpha(1f);
         if (topBar != null) topBar.setVisibility(View.VISIBLE);
         if (bottomBar != null) bottomBar.setVisibility(View.VISIBLE);
-        if (centerPlayBtn != null) centerPlayBtn.setVisibility(View.VISIBLE);
+        if (centerPlayBtn != null) {
+            centerPlayBtn.setVisibility(View.VISIBLE);
+            centerPlayBtn.setClickable(true);
+        }
+        controlOverlay.animate().alpha(1f).setDuration(160).start();
         scheduleHideControls();
     }
 
     private void fadeOutControls() {
         if (controlsLocked) return;
+        controlOverlay.animate().cancel();
+        if (centerPlayBtn != null) centerPlayBtn.setClickable(false);
         controlOverlay.animate()
             .alpha(0f).setDuration(300)
             .withEndAction(() -> {
                 controlsVisible = false;
-                controlOverlay.setVisibility(View.GONE);
+                // Keep the transparent overlay attached so a tap can reveal the
+                // controls again. GONE removes its touch target permanently.
+                controlOverlay.setVisibility(View.VISIBLE);
             }).start();
     }
 
@@ -1029,9 +1056,13 @@ public class FileViewerActivity extends Activity {
 
     private void adjustVideoSize() {
         if (videoNaturalWidth <= 0 || videoNaturalHeight <= 0) return;
-        ViewGroup.LayoutParams params = videoView.getLayoutParams();
-        int screenW = getResources().getDisplayMetrics().widthPixels;
-        int screenH = getResources().getDisplayMetrics().heightPixels;
+        FrameLayout.LayoutParams params =
+            (FrameLayout.LayoutParams) videoView.getLayoutParams();
+        int screenW = videoRoot.getWidth() > 0
+            ? videoRoot.getWidth() : getResources().getDisplayMetrics().widthPixels;
+        int screenH = videoRoot.getHeight() > 0
+            ? videoRoot.getHeight() : getResources().getDisplayMetrics().heightPixels;
+        params.gravity = Gravity.CENTER;
 
         if (isFullscreen) {
             // Fill the screen maintaining aspect ratio — centers automatically in FrameLayout
@@ -1050,6 +1081,7 @@ public class FileViewerActivity extends Activity {
             params.width = w;
             params.height = Math.min(h, maxH);
         }
+        videoView.setLayoutParams(params);
         videoView.requestLayout();
     }
 
