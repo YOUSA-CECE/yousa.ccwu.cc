@@ -600,33 +600,88 @@ public class FileViewerActivity extends Activity {
     // ── Control overlay building ──────────────────────────────────
 
     private FrameLayout buildControlOverlay() {
-        FrameLayout overlay = new FrameLayout(this);
-        overlay.setBackgroundColor(Color.argb(100, 0, 0, 0));
+        FrameLayout overlay = new FrameLayout(this) {
+            private final Paint topGrad = new Paint();
+            private final Paint bottomGrad = new Paint();
+            {
+                topGrad.setShader(new android.graphics.LinearGradient(
+                    0, 0, 0, dp(120),
+                    Color.argb(160, 0, 0, 0),
+                    Color.TRANSPARENT,
+                    android.graphics.Shader.TileMode.CLAMP));
+                bottomGrad.setShader(new android.graphics.LinearGradient(
+                    0, 0, 0, dp(160),
+                    Color.TRANSPARENT,
+                    Color.argb(180, 0, 0, 0),
+                    android.graphics.Shader.TileMode.CLAMP));
+            }
+            @Override
+            protected void onDraw(Canvas canvas) {
+                int h = getHeight();
+                canvas.drawRect(0, 0, getWidth(), dp(120), topGrad);
+                canvas.drawRect(0, h - dp(160), getWidth(), h, bottomGrad);
+            }
+        };
+        overlay.setWillNotDraw(false);
         return overlay;
     }
 
     private View buildTopBar() {
         LinearLayout bar = new LinearLayout(this);
-        bar.setPadding(dp(8), dp(24), dp(8), dp(8));
+        bar.setPadding(dp(6), dp(28), dp(6), dp(8));
         bar.setGravity(Gravity.CENTER_VERTICAL);
 
-        Button back = iconButton("‹", dp(40), v -> finish());
+        Button back = new Button(this);
+        back.setText("‹");
+        back.setTextSize(24);
+        back.setTextColor(Color.WHITE);
+        back.setAllCaps(false);
+        back.setMinHeight(0);
+        back.setMinimumHeight(0);
+        back.setMinWidth(0);
+        back.setMinimumWidth(0);
+        back.setPadding(dp(8), dp(6), dp(8), dp(6));
+        back.setBackground(null);
+        back.setOnClickListener(v -> finish());
         bar.addView(back);
 
         TextView titleView = new TextView(this);
         titleView.setText(fileName);
-        titleView.setTextSize(15);
+        titleView.setTextSize(14);
         titleView.setTextColor(Color.WHITE);
         titleView.setSingleLine(true);
-        titleView.setPadding(dp(8), 0, dp(8), 0);
+        titleView.setPadding(dp(6), 0, dp(6), 0);
+        titleView.setShadowLayer(3, 0, 1, Color.argb(80, 0, 0, 0));
         bar.addView(titleView, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
 
-        Button speedBtn = iconButton("1×", dp(40), v -> cycleSpeed());
-        speedBtn.setTextSize(13);
+        // Speed button
+        Button speedBtn = new Button(this);
+        speedBtn.setText("1×");
+        speedBtn.setTextSize(12);
+        speedBtn.setTextColor(Color.WHITE);
+        speedBtn.setAllCaps(false);
+        speedBtn.setMinHeight(0);
+        speedBtn.setMinimumHeight(0);
+        speedBtn.setMinWidth(0);
+        speedBtn.setMinimumWidth(0);
+        speedBtn.setPadding(dp(8), dp(3), dp(8), dp(3));
+        speedBtn.setBackground(dpRoundBg(Color.argb(80, 255, 255, 255), 10));
+        speedBtn.setOnClickListener(v -> cycleSpeed());
         speedText = speedBtn;
         bar.addView(speedBtn);
 
-        Button lockBtn = iconButton("🔒", dp(40), v -> {
+        Button lockBtn = new Button(this);
+        lockBtn.setText("🔒");
+        lockBtn.setTextSize(14);
+        lockBtn.setTextColor(Color.WHITE);
+        lockBtn.setAllCaps(false);
+        lockBtn.setMinHeight(0);
+        lockBtn.setMinimumHeight(0);
+        lockBtn.setMinWidth(0);
+        lockBtn.setMinimumWidth(0);
+        lockBtn.setPadding(dp(6), dp(3), dp(6), dp(3));
+        lockBtn.setBackground(null);
+        lockBtn.setOnClickListener(v -> {
             controlsLocked = true;
             lockOverlay.setVisibility(View.VISIBLE);
             fadeOutControls();
@@ -639,18 +694,19 @@ public class FileViewerActivity extends Activity {
     private View buildBottomBar() {
         LinearLayout bar = new LinearLayout(this);
         bar.setOrientation(LinearLayout.VERTICAL);
-        bar.setPadding(dp(8), dp(4), dp(8), dp(16));
+        bar.setPadding(dp(6), dp(4), dp(6), dp(10));
         bar.setGravity(Gravity.CENTER_VERTICAL);
 
-        // Seek row
+        // Seek row: time | --------------- | time | fullscreen
         LinearLayout seekRow = new LinearLayout(this);
         seekRow.setGravity(Gravity.CENTER_VERTICAL);
 
         currentTimeText = new TextView(this);
         currentTimeText.setText("0:00");
         currentTimeText.setTextSize(12);
-        currentTimeText.setTextColor(Color.WHITE);
-        currentTimeText.setPadding(dp(6), 0, dp(6), 0);
+        currentTimeText.setTextColor(Color.argb(200, 255, 255, 255));
+        currentTimeText.setPadding(dp(4), 0, dp(4), 0);
+        currentTimeText.setShadowLayer(2, 0, 1, Color.argb(60, 0, 0, 0));
         seekRow.addView(currentTimeText);
 
         seekBar = new SeekBar(this);
@@ -665,32 +721,40 @@ public class FileViewerActivity extends Activity {
                     currentTimeText.setText(formatTime(progress));
                 }
             }
-
             @Override
             public void onStartTrackingTouch(SeekBar sb) {
                 seeking = true;
                 mainHandler.removeCallbacks(hideControlsTask);
             }
-
             @Override
             public void onStopTrackingTouch(SeekBar sb) {
-                if (videoView != null) {
-                    videoView.seekTo(sb.getProgress());
-                }
+                if (videoView != null) videoView.seekTo(sb.getProgress());
                 seeking = false;
                 scheduleHideControls();
             }
         });
-        seekRow.addView(seekBar, new LinearLayout.LayoutParams(0, dp(30), 1));
+        seekRow.addView(seekBar, new LinearLayout.LayoutParams(0, dp(28), 1));
 
         totalTimeText = new TextView(this);
         totalTimeText.setText("0:00");
         totalTimeText.setTextSize(12);
-        totalTimeText.setTextColor(Color.WHITE);
-        totalTimeText.setPadding(dp(6), 0, dp(6), 0);
+        totalTimeText.setTextColor(Color.argb(200, 255, 255, 255));
+        totalTimeText.setPadding(dp(4), 0, dp(4), 0);
+        totalTimeText.setShadowLayer(2, 0, 1, Color.argb(60, 0, 0, 0));
         seekRow.addView(totalTimeText);
 
-        Button fullscreenBtn = iconButton("⛶", dp(40), v -> toggleFullscreen());
+        Button fullscreenBtn = new Button(this);
+        fullscreenBtn.setText("⛶");
+        fullscreenBtn.setTextSize(18);
+        fullscreenBtn.setTextColor(Color.WHITE);
+        fullscreenBtn.setAllCaps(false);
+        fullscreenBtn.setMinHeight(0);
+        fullscreenBtn.setMinimumHeight(0);
+        fullscreenBtn.setMinWidth(0);
+        fullscreenBtn.setMinimumWidth(0);
+        fullscreenBtn.setPadding(dp(6), dp(4), dp(6), dp(4));
+        fullscreenBtn.setBackground(null);
+        fullscreenBtn.setOnClickListener(v -> toggleFullscreen());
         seekRow.addView(fullscreenBtn);
 
         bar.addView(seekRow);
@@ -698,42 +762,76 @@ public class FileViewerActivity extends Activity {
         // Action row: skip back - play/pause - skip forward
         LinearLayout actionRow = new LinearLayout(this);
         actionRow.setGravity(Gravity.CENTER);
-        actionRow.setPadding(0, dp(4), 0, 0);
+        actionRow.setPadding(0, dp(2), 0, 0);
 
-        Button rewindBtn = iconButton("↩10", dp(40), v -> seekRelative(-SEEK_STEP_MS));
+        // Back 10s
+        Button rewindBtn = new Button(this);
+        rewindBtn.setText("↩ 10");
         rewindBtn.setTextSize(12);
+        rewindBtn.setTextColor(Color.WHITE);
+        rewindBtn.setAllCaps(false);
+        rewindBtn.setMinHeight(0);
+        rewindBtn.setMinimumHeight(0);
+        rewindBtn.setMinWidth(0);
+        rewindBtn.setMinimumWidth(0);
+        rewindBtn.setPadding(dp(10), dp(6), dp(10), dp(6));
+        rewindBtn.setBackground(dpRoundBg(Color.argb(60, 255, 255, 255), 16));
+        rewindBtn.setOnClickListener(v -> seekRelative(-SEEK_STEP_MS));
         actionRow.addView(rewindBtn);
 
-        // Spacer
         actionRow.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1));
 
-        // Center play/pause in bottom bar too
-        Button bottomPlayBtn = iconButton("▶", dp(48), v -> togglePlayPause());
-        bottomPlayBtn.setTextSize(22);
+        // Play/pause — accent circle
+        Button bottomPlayBtn = new Button(this);
+        bottomPlayBtn.setText("▶");
+        bottomPlayBtn.setTextSize(20);
+        bottomPlayBtn.setTextColor(Color.WHITE);
+        bottomPlayBtn.setAllCaps(false);
+        bottomPlayBtn.setMinHeight(0);
+        bottomPlayBtn.setMinimumHeight(0);
+        bottomPlayBtn.setMinWidth(0);
+        bottomPlayBtn.setMinimumWidth(0);
+        bottomPlayBtn.setPadding(0, 0, 0, 0);
+        bottomPlayBtn.setBackground(dpRoundBg(Color.argb(200, 215, 102, 146), dp(20)));
         bottomPlayBtn.setTag("bottom_play");
-        actionRow.addView(bottomPlayBtn);
+        bottomPlayBtn.setOnClickListener(v -> togglePlayPause());
+        actionRow.addView(bottomPlayBtn, new LinearLayout.LayoutParams(dp(42), dp(42)));
 
-        // Spacer
         actionRow.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1));
 
-        Button forwardBtn = iconButton("10↪", dp(40), v -> seekRelative(SEEK_STEP_MS));
+        // Forward 10s
+        Button forwardBtn = new Button(this);
+        forwardBtn.setText("10 ↩");
         forwardBtn.setTextSize(12);
+        forwardBtn.setTextColor(Color.WHITE);
+        forwardBtn.setAllCaps(false);
+        forwardBtn.setMinHeight(0);
+        forwardBtn.setMinimumHeight(0);
+        forwardBtn.setMinWidth(0);
+        forwardBtn.setMinimumWidth(0);
+        forwardBtn.setPadding(dp(10), dp(6), dp(10), dp(6));
+        forwardBtn.setBackground(dpRoundBg(Color.argb(60, 255, 255, 255), 16));
+        forwardBtn.setOnClickListener(v -> seekRelative(SEEK_STEP_MS));
         actionRow.addView(forwardBtn);
 
         bar.addView(actionRow);
-
         return bar;
     }
 
     private View buildCenterPlayButton() {
         Button btn = new Button(this);
         btn.setText("▶");
-        btn.setTextSize(48);
+        btn.setTextSize(36);
         btn.setTextColor(Color.WHITE);
-        btn.setBackground(dpRoundBg(Color.argb(100, 0, 0, 0), 50));
+        btn.setAllCaps(false);
+        btn.setMinHeight(0);
+        btn.setMinimumHeight(0);
+        btn.setMinWidth(0);
+        btn.setMinimumWidth(0);
+        btn.setPadding(0, 0, 0, 0);
+        btn.setBackground(dpRoundBg(Color.argb(160, 215, 102, 146), dp(28)));
         btn.setVisibility(View.GONE);
         btn.setOnClickListener(v -> togglePlayPause());
-        // Pulse animation reference
         btn.setTag("center_play");
         return btn;
     }
