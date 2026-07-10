@@ -23,13 +23,18 @@ gradle_file = pathlib.Path(sys.argv[2])
 changelog = sys.argv[3]
 
 data = json.loads(version_file.read_text(encoding="utf-8"))
-data["versionCode"] = int(data["versionCode"]) + 1
-parts = data["versionName"].split(".")
+gradle = gradle_file.read_text(encoding="utf-8")
+code_match = re.search(r"versionCode\s+(\d+)", gradle)
+name_match = re.search(r"versionName\s+'([^']+)'", gradle)
+if not code_match or not name_match:
+    raise SystemExit("无法从 android/app/build.gradle 读取当前版本")
+
+data["versionCode"] = int(code_match.group(1)) + 1
+parts = name_match.group(1).split(".")
 parts[-1] = str(int(parts[-1]) + 1)
 data["versionName"] = ".".join(parts)
 data["changelog"] = changelog
 
-gradle = gradle_file.read_text(encoding="utf-8")
 gradle = re.sub(r"versionCode\s+\d+", f'versionCode {data["versionCode"]}', gradle)
 gradle = re.sub(
     r"versionName\s+'[^']+'",
@@ -51,6 +56,9 @@ VERSION_NAME="$(python -c "import json; print(json.load(open('$VERSION_JSON', en
 APK_NAME="yousa-android-v${VERSION_NAME}.apk"
 APK_PATH="$APP_DIR/static/$APK_NAME"
 cp "$ANDROID_DIR/app/build/outputs/apk/debug/app-debug.apk" "$APK_PATH"
+DELIVERY_DIR="${DELIVERY_DIR:-$HOME/Desktop/codex}"
+mkdir -p "$DELIVERY_DIR"
+cp "$APK_PATH" "$DELIVERY_DIR/$APK_NAME"
 
 python - "$VERSION_JSON" "$APK_PATH" "$APK_NAME" <<'PY'
 import json
@@ -72,7 +80,8 @@ print(f"更新日志: {data['changelog']}")
 PY
 
 cd "$APP_DIR"
-git add -A
+git add -u
+git add -- "static/$APK_NAME" android/gradle/wrapper/gradle-wrapper.jar
 git commit -m "release: v${VERSION_NAME} - ${CHANGELOG}"
 git push origin master
 

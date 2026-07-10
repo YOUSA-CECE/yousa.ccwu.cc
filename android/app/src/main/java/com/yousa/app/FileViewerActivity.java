@@ -101,6 +101,8 @@ public class FileViewerActivity extends Activity {
     private boolean isFullscreen;
     private boolean videoStarted;
     private boolean videoEnded;
+    private boolean resumeVideoAfterPause;
+    private boolean activityResumed;
     private boolean seeking;
     private float currentSpeed = 1.0f;
     private int videoDuration;
@@ -136,8 +138,11 @@ public class FileViewerActivity extends Activity {
 
     @Override
     protected void onPause() {
+        activityResumed = false;
         super.onPause();
-        if (isVideoMode && videoView != null && !videoEnded && videoView.isPlaying()) {
+        resumeVideoAfterPause = isVideoMode && videoView != null
+            && !videoEnded && videoView.isPlaying();
+        if (resumeVideoAfterPause) {
             videoView.pause();
         }
     }
@@ -145,11 +150,14 @@ public class FileViewerActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
-        if (isVideoMode && videoView != null && !videoEnded && videoStarted
+        activityResumed = true;
+        if (resumeVideoAfterPause && isVideoMode && videoView != null
+            && !videoEnded && videoStarted
             && !videoView.isPlaying()) {
             videoView.start();
             refreshPlayPauseState();
         }
+        resumeVideoAfterPause = false;
     }
 
     @Override
@@ -438,10 +446,11 @@ public class FileViewerActivity extends Activity {
         // ── Touch handler for gestures + double-tap ──
         controlOverlay.setOnTouchListener(new View.OnTouchListener() {
             private float downX, downY;
-            private boolean gestureConsumed;
+            private int gestureMode; // 0 = undecided, 1 = seek, 2 = brightness/volume
             private boolean gestureIsVolumeSide;
             private float gestureStartBrightness;
             private int gestureStartVolume;
+            private int gestureStartPosition;
 
             @Override
             public boolean onTouch(View v, MotionEvent event) {
@@ -454,40 +463,46 @@ public class FileViewerActivity extends Activity {
                     case MotionEvent.ACTION_DOWN: {
                         downX = event.getX();
                         downY = event.getY();
-                        gestureConsumed = false;
+                        gestureMode = 0;
                         gestureIsVolumeSide = event.getX() > videoRoot.getWidth() / 2f;
                         gestureStartBrightness = getScreenBrightness();
                         gestureStartVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
+                        gestureStartPosition = videoView == null
+                            ? 0 : videoView.getCurrentPosition();
                         lastGestureTime = System.currentTimeMillis();
                         gestureDetector.onTouchEvent(event);
                         return true;
                     }
                     case MotionEvent.ACTION_MOVE: {
-                        if (gestureConsumed) {
-                            gestureDetector.onTouchEvent(event);
-                            return true;
-                        }
                         float dx = event.getX() - downX;
                         float dy = event.getY() - downY;
                         float absDx = Math.abs(dx);
                         float absDy = Math.abs(dy);
 
-                        // Threshold to lock gesture type
-                        if (absDx < dp(10) && absDy < dp(10)) {
-                            gestureDetector.onTouchEvent(event);
-                            return true;
+                        if (gestureMode == 0) {
+                            // Threshold to lock gesture type
+                            if (absDx < dp(10) && absDy < dp(10)) {
+                                gestureDetector.onTouchEvent(event);
+                                return true;
+                            }
+                            if (absDx > absDy && absDx > dp(15)) {
+                                gestureMode = 1;
+                            } else if (absDy > dp(15)) {
+                                gestureMode = 2;
+                            } else {
+                                gestureDetector.onTouchEvent(event);
+                                return true;
+                            }
                         }
 
-                        // Lock gesture: horizontal = seek, vertical = brightness/volume
-                        if (absDx > absDy && absDx > dp(15)) {
-                            // Horizontal seek
-                            gestureConsumed = true;
+                        if (gestureMode == 1) {
+                            // Horizontal seek, based on the position at ACTION_DOWN.
                             int totalMs = videoDuration;
                             if (totalMs > 0 && videoView != null) {
-                                int cur = videoView.getCurrentPosition();
                                 float ratio = dx / (float) videoRoot.getWidth();
                                 int delta = (int) (ratio * totalMs);
-                                int target = Math.max(0, Math.min(totalMs, cur + delta));
+                                int target = Math.max(0,
+                                    Math.min(totalMs, gestureStartPosition + delta));
                                 videoView.seekTo(target);
                                 updateTimeDisplay();
                                 // Show mini seek indicator
@@ -496,13 +511,10 @@ public class FileViewerActivity extends Activity {
                                 }
                                 String label = (delta > 0 ? "+" : "") + (delta / 1000) + "s";
                                 showGestureLabel(label, Color.rgb(0, 180, 255));
-                                downX = event.getX();
                             }
-                            gestureDetector.onTouchEvent(event);
                             return true;
-                        } else if (absDy > dp(15)) {
+                        } else {
                             // Vertical brightness/volume
-                            gestureConsumed = true;
                             float change = -dy / (float) videoRoot.getHeight();
                             if (gestureIsVolumeSide) {
                                 // Volume
@@ -520,15 +532,12 @@ public class FileViewerActivity extends Activity {
                                 int pct = Math.round(target * 100);
                                 showGestureLabel("☀ " + pct + "%", Color.WHITE);
                             }
-                            gestureDetector.onTouchEvent(event);
                             return true;
                         }
-                        gestureDetector.onTouchEvent(event);
-                        return true;
                     }
                     case MotionEvent.ACTION_UP:
                     case MotionEvent.ACTION_CANCEL: {
-                        if (!gestureConsumed) {
+                        if (gestureMode == 0) {
                             gestureDetector.onTouchEvent(event);
                         }
                         if (brightnessVolumePanel.getVisibility() == View.VISIBLE) {
@@ -559,7 +568,11 @@ public class FileViewerActivity extends Activity {
             adjustVideoSize();
 
             videoStarted = true;
-            mp.start();
+            if (activityResumed) {
+                videoView.start();
+            } else {
+                resumeVideoAfterPause = true;
+            }
             refreshPlayPauseState();
             showControls();
         });
@@ -1007,6 +1020,9 @@ public class FileViewerActivity extends Activity {
             .alpha(0f).setDuration(300)
             .withEndAction(() -> {
                 controlsVisible = false;
+                if (topBar != null) topBar.setVisibility(View.INVISIBLE);
+                if (bottomBar != null) bottomBar.setVisibility(View.INVISIBLE);
+                if (centerPlayBtn != null) centerPlayBtn.setVisibility(View.INVISIBLE);
                 // Keep the transparent overlay attached so a tap can reveal the
                 // controls again. GONE removes its touch target permanently.
                 controlOverlay.setVisibility(View.VISIBLE);

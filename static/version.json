@@ -1,7 +1,7 @@
 {
-  "versionCode": 29,
-  "versionName": "1.1.17",
-  "apkUrl": "https://yousa.ccwu.cc/static/yousa-android-v1.1.17.apk",
-  "apkSizeBytes": 68869,
-  "changelog": "优化视频播放器：修复控制界面自动隐藏后无法再次唤出的问题；视频按原比例居中；重新设计进度条和播放控件；横屏时隐藏重复操作栏，让进度条贴近底部。"
+  "versionCode": 30,
+  "versionName": "1.1.18",
+  "apkUrl": "https://yousa.ccwu.cc/static/yousa-android-v1.1.18.apk",
+  "apkSizeBytes": 69049,
+  "changelog": "修复云盘多文件选择；修复视频播放器隐藏控件误触、滑动手势不连续及后台自动播放问题。"
 }
