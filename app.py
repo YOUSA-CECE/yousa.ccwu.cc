@@ -208,6 +208,19 @@ def init_db():
         db.commit()
     except sqlite3.OperationalError:
         pass
+    # Chat logs table
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS chat_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_message TEXT NOT NULL,
+            ai_reply TEXT NOT NULL,
+            user_id INTEGER DEFAULT NULL,
+            username TEXT DEFAULT 'anonymous',
+            ip_address TEXT DEFAULT '',
+            created_at TEXT DEFAULT (datetime('now'))
+        )
+    """)
+    db.commit()
     # Add visibility to upload_meta
     try:
         db.execute("ALTER TABLE upload_meta ADD COLUMN visibility TEXT DEFAULT 'public'")
@@ -837,6 +850,46 @@ def admin_reset_password(user_id):
     db.commit()
     flash(f"用户 #{user_id} 密码已重置", "success")
     return redirect(url_for("admin_panel"))
+
+
+@app.route("/admin/chat-logs")
+@admin_required
+def admin_chat_logs():
+    db = get_db()
+    page = request.args.get("page", 1, type=int)
+    per_page = 50
+    total = db.execute("SELECT COUNT(*) FROM chat_logs").fetchone()[0]
+    logs = db.execute("""
+        SELECT id, user_message, ai_reply, username, ip_address, created_at
+        FROM chat_logs
+        ORDER BY id DESC
+        LIMIT ? OFFSET ?
+    """, (per_page, (page - 1) * per_page)).fetchall()
+    return render_template("admin_chat_logs.html", logs=logs,
+                           page=page, total=total, per_page=per_page)
+
+
+@app.route("/admin/chat-logs/<int:log_id>")
+@admin_required
+def admin_chat_log_detail(log_id):
+    db = get_db()
+    log = db.execute("""
+        SELECT id, user_message, ai_reply, username, ip_address, created_at
+        FROM chat_logs WHERE id = ?
+    """, (log_id,)).fetchone()
+    if not log:
+        abort(404)
+    return render_template("admin_chat_log_detail.html", log=log)
+
+
+@app.route("/admin/chat-logs/<int:log_id>/delete", methods=["POST"])
+@admin_required
+def admin_chat_log_delete(log_id):
+    db = get_db()
+    db.execute("DELETE FROM chat_logs WHERE id = ?", (log_id,))
+    db.commit()
+    flash("记录已删除", "success")
+    return redirect(url_for("admin_chat_logs"))
 
 
 @app.route("/profile")
@@ -1775,6 +1828,23 @@ def chat_api():
         import re
         if not re.search(r"汪\s*$", reply):
             reply = reply.rstrip() + " 汪"
+
+        # ── 记录对话 ──
+        try:
+            db = get_db()
+            db.execute(
+                "INSERT INTO chat_logs (user_message, ai_reply, user_id, username, ip_address) VALUES (?, ?, ?, ?, ?)",
+                (
+                    user_msg[:500],  # 限制长度防止超大消息
+                    reply[:2000],
+                    current_user.id if current_user.is_authenticated else None,
+                    current_user.username if current_user.is_authenticated else "anonymous",
+                    request.remote_addr or "",
+                ),
+            )
+            db.commit()
+        except Exception:
+            pass  # 记录失败不影响用户使用
 
         return jsonify({"reply": reply})
     except Exception as e:

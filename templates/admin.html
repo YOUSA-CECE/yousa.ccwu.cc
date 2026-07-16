@@ -120,6 +120,7 @@
         <div class="session-info">
             <p><strong>用户：</strong>{{ current_user.nickname }}（{{ current_user.username }}）</p>
             <p><strong>角色：</strong>{% if current_user.is_admin %}管理员{% else %}普通用户{% endif %}</p>
+            <p><a href="/admin/chat-logs" class="form-btn form-btn-sm">💬 AI 聊天记录</a></p>
             <p><a href="/admin/password" class="form-btn form-btn-sm">修改我的密码</a></p>
         </div>
     </div>
