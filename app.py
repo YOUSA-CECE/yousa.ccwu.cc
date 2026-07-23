@@ -887,7 +887,6 @@ def login():
 
 
 @app.route("/register", methods=["GET", "POST"])
-@admin_required
 def register():
     if request.method == "POST":
         username = request.form.get("username", "").strip()
@@ -895,8 +894,12 @@ def register():
         role = "user"
         nickname = request.form.get("nickname", "").strip()
 
-        if not username or len(password) < 8:
-            flash("用户名不能为空，密码至少需要 8 位", "error")
+        if not _allow_request("register", request.remote_addr or "unknown", 5, 3600):
+            flash("注册尝试过于频繁，请一小时后再试", "error")
+            return render_template("register.html"), 429
+
+        if not username or len(username) > 64 or len(password) < 8:
+            flash("用户名不能为空且不能超过 64 个字符，密码至少需要 8 位", "error")
             return render_template("register.html")
 
         db = get_db()
@@ -911,7 +914,7 @@ def register():
         )
         db.commit()
         flash(f"用户 {username} 创建成功！", "success")
-        return redirect(url_for("admin_panel"))
+        return redirect(url_for("login"))
 
     return render_template("register.html")
 

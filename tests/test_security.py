@@ -45,6 +45,22 @@ class SecurityTests(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 200)
 
+    def test_public_registration_requires_at_least_eight_characters(self):
+        token = _csrf_from(self.client.get("/register"))
+        too_short = self.client.post(
+            "/register",
+            data={"username": "short-password-user", "password": "1234567", "csrf_token": token},
+        )
+        self.assertEqual(too_short.status_code, 200)
+
+        token = _csrf_from(self.client.get("/register"))
+        created = self.client.post(
+            "/register",
+            data={"username": "public-user", "password": "12345678", "csrf_token": token},
+        )
+        self.assertEqual(created.status_code, 302)
+        self.assertTrue(created.headers["Location"].endswith("/login"))
+
     def test_admin_exec_rejects_missing_management_key(self):
         response = self.client.post("/admin/exec", data={"cmd": "true"})
         self.assertEqual(response.status_code, 403)

@@ -18,11 +18,12 @@
             <div class="form-group">
                 <label for="password">密码</label>
                 <input type="password" id="password" name="password" required minlength="8"
-                       placeholder="输入密码" class="form-input">
+                       placeholder="至少 8 位" class="form-input">
             </div>
             <button type="submit" class="form-btn">创建用户</button>
         </form>
-        <a href="/admin" class="auth-back">← 返回管理后台</a>
+        <p class="auth-hint">密码至少 8 位。注册成功后请使用新账号登录。</p>
+        <a href="/login" class="auth-back">← 返回登录</a>
     </div>
 </div>
 {% endblock %}
