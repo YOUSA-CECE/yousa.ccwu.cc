@@ -3,6 +3,14 @@ __pycache__/
 .gallery_thumbs/
 *.pyc
 .apikey
+.admin_exec_key
+.agent_phone_key
+.agent_hermes_key
+.flask_secret_key
+.admin_bootstrap_credentials
+agent_bridge_data.json
+agent_bridge_data.lock
+agent_bridge_data.tmp
 users.db
 *.exe
 cloudflared.exe

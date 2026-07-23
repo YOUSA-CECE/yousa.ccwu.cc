@@ -4,6 +4,10 @@
 import os
 import re
 import json
+import html
+import hmac
+import hashlib
+import secrets
 import sqlite3
 import mimetypes
 import threading
@@ -13,6 +17,7 @@ import shutil
 from pathlib import Path
 from datetime import datetime, timezone
 from functools import wraps
+from urllib.parse import quote
 try:
     from zoneinfo import ZoneInfo
 except ImportError:
@@ -24,7 +29,7 @@ from flask import (
     Flask, render_template, request, jsonify, send_from_directory,
     abort, redirect, url_for, flash, g, session
 )
-from agent_bridge import agent_bridge
+from agent_bridge import agent_bridge, initialize_agent_keys
 from flask_login import (
     LoginManager, UserMixin, login_user, logout_user,
     login_required, current_user
@@ -53,9 +58,10 @@ WIKI_DIR = BASE_DIR / "wiki"
 CLOUD_DIR = BASE_DIR / "云盘"
 CLOUD_DIR.mkdir(exist_ok=True)
 FILE_DIR = CLOUD_DIR
-DB_PATH = BASE_DIR / "users.db"
+DB_PATH = Path(os.getenv("DATABASE_PATH", str(BASE_DIR / "users.db"))).resolve()
 TEMPLATES_DIR = BASE_DIR / "templates"
 STATIC_DIR = BASE_DIR / "static"
+Image.MAX_IMAGE_PIXELS = int(os.getenv("MAX_IMAGE_PIXELS", "50000000"))
 SAFE_CACHE_PATHS = {"/", "/wiki/", "/blog", "/about", "/app", "/download", "/guestbook"}
 SAFE_CACHE_ENDPOINTS = {
     "home", "wiki_view", "wiki_search", "blog_list", "blog_post",
@@ -76,14 +82,81 @@ ACTIVITY_COLUMNS = {
 }
 _schema_lock = threading.Lock()
 _activity_schema_path = None
+_rate_limit_lock = threading.Lock()
+_rate_limit_buckets = {}
+
+
+def _load_or_create_secret(env_name, filename, min_length=32):
+    """Load a strong secret from the environment or a local ignored file."""
+    value = os.getenv(env_name, "").strip()
+    if value:
+        if len(value) < min_length:
+            raise RuntimeError(f"{env_name} must contain at least {min_length} characters")
+        return value
+
+    path = BASE_DIR / filename
+    if path.exists():
+        value = path.read_text(encoding="utf-8").strip()
+        if len(value) < min_length:
+            raise RuntimeError(f"{path.name} must contain at least {min_length} characters")
+        return value
+
+    value = secrets.token_urlsafe(48)
+    path.write_text(value + "\n", encoding="utf-8")
+    try:
+        path.chmod(0o600)
+    except OSError:
+        pass
+    return value
+
+
+def _is_within(path, base):
+    """Return True only when path is base itself or a real descendant of it."""
+    try:
+        path.resolve().relative_to(base.resolve())
+        return True
+    except ValueError:
+        return False
+
+
+def _allow_request(bucket, identity, limit, window_seconds):
+    """Small in-process fixed-window limiter for expensive public endpoints."""
+    now = time.monotonic()
+    key = (bucket, identity)
+    with _rate_limit_lock:
+        timestamps = [stamp for stamp in _rate_limit_buckets.get(key, ())
+                      if now - stamp < window_seconds]
+        if len(timestamps) >= limit:
+            _rate_limit_buckets[key] = timestamps
+            return False
+        timestamps.append(now)
+        _rate_limit_buckets[key] = timestamps
+        if len(_rate_limit_buckets) > 5000:
+            cutoff = now - window_seconds
+            for old_key in list(_rate_limit_buckets):
+                kept = [stamp for stamp in _rate_limit_buckets[old_key] if stamp >= cutoff]
+                if kept:
+                    _rate_limit_buckets[old_key] = kept
+                else:
+                    _rate_limit_buckets.pop(old_key, None)
+        return True
 
 app = Flask(__name__, template_folder=str(TEMPLATES_DIR),
             static_folder=str(STATIC_DIR), static_url_path="/static")
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
-app.secret_key = os.getenv("SECRET_KEY", "yousa-dev-secret-key-change-me")
+app.secret_key = _load_or_create_secret("SECRET_KEY", ".flask_secret_key")
+ADMIN_EXEC_KEY = _load_or_create_secret("ADMIN_EXEC_API_KEY", ".admin_exec_key")
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_SECURE=os.getenv("SESSION_COOKIE_SECURE", "1") != "0",
+    MAX_CONTENT_LENGTH=int(os.getenv("MAX_REQUEST_BYTES", str(32 * 1024 * 1024))),
+)
 
 # Agent Bridge — phone agent ↔ Hermes desktop communication
 app.register_blueprint(agent_bridge)
+with app.app_context():
+    initialize_agent_keys()
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -92,6 +165,29 @@ login_manager.login_view = "login"
 # Flask-Login's automatic flash avoids duplicate "请先登录" messages when a
 # WebView process restores or retries a protected URL.
 login_manager.login_message = None
+
+
+def csrf_token():
+    token = session.get("_csrf_token")
+    if not token:
+        token = secrets.token_urlsafe(32)
+        session["_csrf_token"] = token
+    return token
+
+
+@app.before_request
+def verify_csrf_token():
+    if request.method not in {"POST", "PUT", "PATCH", "DELETE"}:
+        return None
+    if request.endpoint == "admin_exec" or (request.blueprint == "agent_bridge"):
+        return None
+    supplied = request.headers.get("X-CSRF-Token", "") or request.form.get("csrf_token", "")
+    expected = session.get("_csrf_token", "")
+    if not supplied or not expected or not hmac.compare_digest(supplied, expected):
+        if request.is_json or request.path.startswith(("/api/", "/cloud/", "/gallery/")):
+            return jsonify({"error": "CSRF token missing or invalid"}), 400
+        abort(400, description="CSRF token missing or invalid")
+    return None
 
 
 # ── Database ────────────────────────────────────────────────────────
@@ -227,29 +323,59 @@ def init_db():
         db.commit()
     except sqlite3.OperationalError:
         pass
-    # Create default admin if no users exist
+    # Bootstrap one administrator without embedding a reusable password.
+    bootstrap_credentials = []
     cur = db.execute("SELECT COUNT(*) FROM users")
     if cur.fetchone()[0] == 0:
-        db.execute(
-            "INSERT INTO users (username, password, role, nickname) VALUES (?, ?, ?, ?)",
-            ("admin", generate_password_hash("admin123"), "admin", "管理员")
+        username = os.getenv("INITIAL_ADMIN_USERNAME", "admin").strip() or "admin"
+        password = os.getenv("INITIAL_ADMIN_PASSWORD", "").strip()
+        if password and len(password) < 8:
+            raise RuntimeError("INITIAL_ADMIN_PASSWORD must contain at least 8 characters")
+        if not password:
+            password = secrets.token_urlsafe(24)
+            bootstrap_credentials.append((username, password, "new administrator"))
+        inserted = db.execute(
+            "INSERT OR IGNORE INTO users (username, password, role, nickname) VALUES (?, ?, ?, ?)",
+            (username, generate_password_hash(password), "admin", "管理员")
         )
-        db.execute(
-            "INSERT INTO users (username, password, role, nickname) VALUES (?, ?, ?, ?)",
-            ("yousa", generate_password_hash("yousa123"), "admin", "Yousa")
-        )
-        db.commit()
-        print("  👤 管理员已创建: admin / admin123, yousa / yousa123")
-    else:
-        # Ensure yousa admin exists (migration)
-        cur2 = db.execute("SELECT COUNT(*) FROM users WHERE username='yousa'")
-        if cur2.fetchone()[0] == 0:
-            db.execute(
-                "INSERT INTO users (username, password, role, nickname) VALUES (?, ?, ?, ?)",
-                ("yousa", generate_password_hash("yousa123"), "admin", "Yousa")
+        if inserted.rowcount == 0:
+            bootstrap_credentials.clear()
+
+    # Rotate accounts that still use passwords shipped by older releases.
+    for row in db.execute(
+        "SELECT id, username, password FROM users WHERE role='admin'"
+    ).fetchall():
+        try:
+            uses_default = any(
+                check_password_hash(row[2], candidate)
+                for candidate in ("admin123", "yousa123")
             )
-            db.commit()
-            print("  👤 补充管理员: yousa / yousa123")
+        except (TypeError, ValueError):
+            uses_default = False
+        if uses_default:
+            password = secrets.token_urlsafe(24)
+            updated = db.execute(
+                "UPDATE users SET password=? WHERE id=? AND password=?",
+                (generate_password_hash(password), row[0], row[2]),
+            )
+            if updated.rowcount:
+                bootstrap_credentials.append((row[1], password, "rotated insecure password"))
+
+    db.commit()
+    if bootstrap_credentials:
+        credentials_path = BASE_DIR / ".admin_bootstrap_credentials"
+        credentials_path.write_text(
+            "\n".join(
+                f"username={username}\npassword={password}\nreason={reason}\n"
+                for username, password, reason in bootstrap_credentials
+            ),
+            encoding="utf-8",
+        )
+        try:
+            credentials_path.chmod(0o600)
+        except OSError:
+            pass
+        print(f"  Administrator credentials were written to {credentials_path}")
     db.close()
 
 
@@ -301,6 +427,12 @@ class User(UserMixin):
         self.role = row["role"]
         self.nickname = row["nickname"] or row["username"]
 
+    def get_id(self):
+        # Bind login and remember-me cookies to the current password hash so a
+        # password reset immediately revokes every existing session.
+        version = hashlib.sha256(self.password.encode("utf-8")).hexdigest()[:20]
+        return f"{self.id}:{version}"
+
     @property
     def is_admin(self):
         return self.role == "admin"
@@ -312,9 +444,19 @@ class User(UserMixin):
 
 @login_manager.user_loader
 def load_user(user_id):
+    try:
+        raw_id, supplied_version = str(user_id).split(":", 1)
+        numeric_id = int(raw_id)
+    except (TypeError, ValueError):
+        return None
     db = get_db()
-    row = db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
-    return User(row) if row else None
+    row = db.execute("SELECT * FROM users WHERE id = ?", (numeric_id,)).fetchone()
+    if not row:
+        return None
+    expected_version = hashlib.sha256(row["password"].encode("utf-8")).hexdigest()[:20]
+    if not hmac.compare_digest(supplied_version, expected_version):
+        return None
+    return User(row)
 
 
 # ── Role Decorators ─────────────────────────────────────────────────
@@ -345,7 +487,11 @@ def inject_user():
         asset_version = int((STATIC_DIR / "style.css").stat().st_mtime)
     except OSError:
         asset_version = 1
-    return dict(current_user=current_user, asset_version=asset_version)
+    return dict(
+        current_user=current_user,
+        asset_version=asset_version,
+        csrf_token=csrf_token(),
+    )
 
 
 @app.template_filter("hk_time")
@@ -425,14 +571,9 @@ def apply_cache_policy(response):
         response.headers["Vary"] = "Cookie"
         response.headers["X-Yousa-Cache"] = "gallery-image"
     elif is_safe_page:
-        # public + s-maxage 允许 Cloudflare/CDN 边缘缓存 HTML
-        # max-age=0 浏览器不缓存（每次协商）
-        # stale-while-revalidate=900 后台刷新时先返回旧内容
-        response.headers["Cache-Control"] = (
-            "public, s-maxage=60, max-age=0, stale-while-revalidate=900"
-        )
-        # CDN-Cache-Control 显式告知 Cloudflare 边缘缓存 HTML
-        response.headers["CDN-Cache-Control"] = "public, max-age=60"
+        # HTML contains a per-session CSRF token and must never be shared by a CDN.
+        response.headers["Cache-Control"] = "private, no-cache, max-age=0, must-revalidate"
+        response.headers["CDN-Cache-Control"] = "private, no-store"
         vary = response.headers.get("Vary", "")
         vary_values = {item.strip() for item in vary.split(",") if item.strip()}
         vary_values.add("Cookie")
@@ -454,6 +595,16 @@ def apply_cache_policy(response):
         )
     ):
         response.headers["Clear-Site-Data"] = '"cache"'
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    response.headers.setdefault(
+        "Permissions-Policy", "camera=(), microphone=(), geolocation=()"
+    )
+    if request.is_secure:
+        response.headers.setdefault(
+            "Strict-Transport-Security", "max-age=31536000; includeSubDomains"
+        )
     return response
 
 
@@ -488,19 +639,20 @@ def resolve_wikilinks(text):
         title = m.group(1).strip()
         path = _WIKI_LINK_CACHE.get(title)
         if path:
-            return f'<a href="/wiki/{path}">{title}</a>'
+            return f'<a href="/wiki/{quote(path, safe="/")}">{title}</a>'
         # Fallback: try filename match, use as-is with best guess
         for cache_title, cache_path in _WIKI_LINK_CACHE.items():
             if title in cache_title or cache_title in title:
-                return f'<a href="/wiki/{cache_path}">{title}</a>'
+                return f'<a href="/wiki/{quote(cache_path, safe="/")}">{title}</a>'
         # No match — render as dead link
         return f'<span class="wiki-dead-link">{title}</span>'
 
     return re.sub(r'\[\[([^\]]+)\]\]', _replace, text)
 
 def render_markdown(text):
-    # Resolve [[wikilinks]] before markdown rendering
-    text = resolve_wikilinks(text)
+    # Escape user HTML before Markdown expansion. The only HTML introduced
+    # afterwards is the small, controlled wikilink markup above.
+    text = resolve_wikilinks(html.escape(str(text), quote=False))
     return markdown.markdown(text, extensions=[
         "fenced_code", "codehilite", "tables", "toc", "nl2br"
     ])
@@ -713,6 +865,10 @@ def login():
         password = request.form.get("password", "")
         next_page = request.args.get("next", url_for("home"))
 
+        if not _allow_request("login", request.remote_addr or "unknown", 10, 300):
+            flash("登录尝试过于频繁，请稍后再试", "error")
+            return render_template("login.html"), 429
+
         db = get_db()
         row = db.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
         if row and check_password_hash(row["password"], password):
@@ -739,8 +895,8 @@ def register():
         role = "user"
         nickname = request.form.get("nickname", "").strip()
 
-        if not username or not password:
-            flash("用户名和密码不能为空", "error")
+        if not username or len(password) < 8:
+            flash("用户名不能为空，密码至少需要 8 位", "error")
             return render_template("register.html")
 
         db = get_db()
@@ -760,7 +916,7 @@ def register():
     return render_template("register.html")
 
 
-@app.route("/logout")
+@app.route("/logout", methods=["POST"])
 @login_required
 def logout():
     logout_user()
@@ -841,8 +997,8 @@ def admin_update_nickname(user_id):
 def admin_reset_password(user_id):
     # Admin resets any user's password.
     new_password = request.form.get("new_password", "")
-    if len(new_password) < 4:
-        flash("密码至少 4 位", "error")
+    if len(new_password) < 8:
+        flash("密码至少 8 位", "error")
         return redirect(url_for("admin_panel"))
     db = get_db()
     db.execute("UPDATE users SET password = ? WHERE id = ?",
@@ -925,8 +1081,8 @@ def change_password():
             flash("当前密码错误", "error")
             return render_template("password.html")
 
-        if len(new_pw) < 4:
-            flash("新密码至少 4 位", "error")
+        if len(new_pw) < 8:
+            flash("新密码至少 8 位", "error")
             return render_template("password.html")
 
         if new_pw != confirm_pw:
@@ -945,27 +1101,18 @@ def change_password():
 
 @app.route("/admin/exec", methods=["POST"])
 def admin_exec():
-    """Run a shell command on the server (admin only).
-
-    Auth methods (either one):
-      1. Admin session cookie (via browser login)
-      2. X-API-Key header matching the key in .apikey
-    """
+    """Run a shell command using a dedicated management key."""
     import subprocess
 
-    # Session auth
-    if current_user.is_authenticated and current_user.is_admin:
-        pass  # OK
-    else:
-        # API key auth
-        api_key = request.headers.get("X-API-Key", "")
-        expected = (BASE_DIR / ".apikey").read_text(encoding="utf-8").strip()
-        if api_key != expected:
-            return {"ok": False, "error": "unauthorized"}, 403
+    api_key = request.headers.get("X-Admin-Exec-Key", "").strip()
+    if not api_key or not hmac.compare_digest(api_key, ADMIN_EXEC_KEY):
+        return {"ok": False, "error": "unauthorized"}, 403
 
     cmd = request.form.get("cmd", "").strip()
     if not cmd:
         return {"ok": False, "error": "cmd required"}
+    if len(cmd) > 4096:
+        return {"ok": False, "error": "cmd too long"}, 400
     try:
         # Find bash: prefer Termux path on phone, fallback to system
         _bash = "/data/data/com.termux/files/usr/bin/bash"
@@ -1082,7 +1229,7 @@ def cloud_drive(subpath=None):
     else:
         target = base
 
-    if not str(target).startswith(str(base)):
+    if not _is_within(target, base):
         abort(403)
     if not target.exists():
         return render_template("cloud.html", dirs=[], files=[],
@@ -1155,6 +1302,7 @@ def cloud_drive(subpath=None):
 
 UPLOAD_PART_SIZE = 8 * 1024 * 1024
 UPLOAD_MAX_PART_SIZE = 10 * 1024 * 1024
+UPLOAD_MAX_FILE_SIZE = int(os.getenv("MAX_UPLOAD_BYTES", str(2 * 1024 * 1024 * 1024)))
 UPLOAD_TMP_DIR = CLOUD_DIR / ".uploads"
 UPLOAD_TMP_DIR.mkdir(exist_ok=True)
 
@@ -1196,7 +1344,7 @@ def cloud_upload_init():
 
     if not filename or filename != Path(filename).name or "\x00" in filename:
         return jsonify({"error": "文件名不合法"}), 400
-    if size < 0:
+    if size < 0 or size > UPLOAD_MAX_FILE_SIZE:
         return jsonify({"error": "文件大小不合法"}), 400
 
     base, target = _cloud_upload_target(subpath)
@@ -1217,6 +1365,8 @@ def cloud_upload_init():
         "visibility": str(data.get("visibility", "public")).strip(),
         "created_at": time.time(),
     }
+    if manifest["visibility"] not in {"public", "admin_only"}:
+        return jsonify({"error": "可见性设置不合法"}), 400
     (upload_dir / "manifest.json").write_text(
         json.dumps(manifest, ensure_ascii=False), encoding="utf-8"
     )
@@ -1327,10 +1477,9 @@ def cloud_upload_complete():
 def cloud_upload():
     # Upload files to the cloud drive.
     subpath = request.form.get("path", "").strip()
-    base = FILE_DIR.resolve()
-    target = (base / subpath).resolve() if subpath else base
+    base, target = _cloud_upload_target(subpath)
 
-    if not str(target).startswith(str(base)):
+    if target is None:
         return jsonify({"error": "路径不允许"}), 403
     if not target.exists():
         return jsonify({"error": "目录不存在"}), 404
@@ -1344,11 +1493,17 @@ def cloud_upload():
     title = request.form.get("title", "").strip()
     notes = request.form.get("notes", "").strip()
     visibility = request.form.get("visibility", "public").strip()
+    if visibility not in {"public", "admin_only"}:
+        return jsonify({"error": "可见性设置不合法"}), 400
     results = []
     for f in uploaded:
         if not f.filename:
             continue
-        dest = target / f.filename
+        filename = f.filename.strip()
+        if filename != Path(filename).name or "\x00" in filename:
+            results.append({"name": f.filename, "status": "失败", "reason": "文件名不合法"})
+            continue
+        dest = target / filename
         try:
             f.save(str(dest))
             # Save metadata
@@ -1381,7 +1536,7 @@ def cloud_rename():
 
     base = FILE_DIR.resolve()
     target = (base / path).resolve()
-    if not str(target).startswith(str(base)):
+    if not _is_within(target, base):
         return jsonify({"error": "路径不允许"}), 403
     if not target.exists() or not target.is_file():
         return jsonify({"error": "文件不存在"}), 404
@@ -1419,7 +1574,7 @@ def cloud_delete():
     base = FILE_DIR.resolve()
     target = (base / path).resolve()
 
-    if not str(target).startswith(str(base)):
+    if not _is_within(target, base):
         return jsonify({"error": "路径不允许"}), 403
     if not target.exists():
         return jsonify({"error": "文件不存在"}), 404
@@ -1444,11 +1599,13 @@ def cloud_mkdir():
     name = request.form.get("name", "").strip()
     if not name:
         return jsonify({"error": "目录名不能为空"}), 400
+    if name != Path(name).name or "\x00" in name or name in {".", ".."}:
+        return jsonify({"error": "目录名不合法"}), 400
 
     base = FILE_DIR.resolve()
     parent = (base / subpath).resolve() if subpath else base
 
-    if not str(parent).startswith(str(base)):
+    if not _is_within(parent, base):
         return jsonify({"error": "路径不允许"}), 403
 
     new_dir = parent / name
@@ -1466,9 +1623,18 @@ def cloud_preview(filepath):
     base = FILE_DIR.resolve()
     target = (base / filepath).resolve()
 
-    if not str(target).startswith(str(base)):
+    if not _is_within(target, base):
         abort(403)
     if not target.exists() or not target.is_file():
+        abort(404)
+
+    rel = str(target.relative_to(base)).replace("\\", "/")
+    meta = get_db().execute(
+        "SELECT visibility FROM upload_meta "
+        "WHERE type='cloud' AND filepath=? ORDER BY id DESC LIMIT 1",
+        (rel,),
+    ).fetchone()
+    if meta and (meta["visibility"] or "public") == "admin_only" and not current_user.is_admin:
         abort(404)
 
     ext = target.suffix.lower()
@@ -1497,8 +1663,10 @@ def cloud_preview(filepath):
                                ext=ext)
 
     # For images, redirect to gallery
-    if ext in (".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".svg"):
-        return redirect(url_for("gallery", subpath=filepath))
+    if ext in (".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp"):
+        return send_from_directory(target.parent, target.name, conditional=True)
+    if ext == ".svg":
+        return send_from_directory(target.parent, target.name, as_attachment=True)
 
     # For other files, trigger download
     return send_from_directory(target.parent, target.name,
@@ -1544,7 +1712,7 @@ def _make_thumbnail(image_abs: Path, thumb_abs: Path, size=THUMB_SIZE):
 def gallery_thumb(image_rel):
     """Serve a thumbnail for the gallery image at the given relative path."""
     target = (BASE_DIR / image_rel).resolve()
-    if not str(target).startswith(str(BASE_DIR)):
+    if not _is_within(target, GALLERY_UPLOAD_DIR):
         abort(403)
     if not target.exists() or not target.is_file():
         abort(404)
@@ -1574,7 +1742,7 @@ def gallery(subpath=None):
     else:
         target = GALLERY_UPLOAD_DIR
 
-    if not str(target).startswith(str(base)):
+    if not _is_within(target, GALLERY_UPLOAD_DIR):
         abort(403)
     if not target.exists():
         # Directory doesn't exist — show empty gallery instead of 404
@@ -1584,7 +1752,7 @@ def gallery(subpath=None):
     if target.is_file():
         # Serve the image (only image types)
         ext = target.suffix.lower()
-        if ext in (".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp"):
+        if ext in (".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp"):
             rel = str(target.relative_to(base)).replace("\\", "/")
             meta = get_db().execute(
                 "SELECT visibility, uploaded_by FROM upload_meta "
@@ -1604,7 +1772,7 @@ def gallery(subpath=None):
         abort(404)
 
     # Collect image files recursively from this directory
-    image_exts = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp"}
+    image_exts = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp"}
     images = []
     dirs = []
     # Load upload metadata from DB (include visibility)
@@ -1691,6 +1859,8 @@ def gallery_upload():
     title = request.form.get("title", "").strip()
     notes = request.form.get("notes", "").strip()
     visibility = request.form.get("visibility", "public")
+    if visibility not in {"public", "private"}:
+        return jsonify({"error": "可见性设置不合法"}), 400
 
     # Determine target directory
     if album:
@@ -1702,7 +1872,7 @@ def gallery_upload():
     else:
         target_dir = GALLERY_UPLOAD_DIR
 
-    image_exts = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp"}
+    image_exts = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp"}
     results = []
     errors = []
 
@@ -1718,7 +1888,10 @@ def gallery_upload():
         if title:
             safe_stem = re.sub(r'[^\w\u4e00-\u9fff\-_\. ]', "", title)[:50]
         else:
-            safe_stem = Path(file.filename).stem
+            safe_stem = re.sub(
+                r'[^\w\u4e00-\u9fff\-_\. ]', "", Path(file.filename).stem
+            )[:50]
+        safe_stem = safe_stem.strip(" .") or secrets.token_hex(8)
         safe_name = safe_stem + ext
 
         dest = target_dir / safe_name
@@ -1729,6 +1902,8 @@ def gallery_upload():
 
         try:
             file.save(str(dest))
+            with Image.open(dest) as uploaded_image:
+                uploaded_image.verify()
             rel = str(dest.relative_to(BASE_DIR)).replace("\\", "/")
             # Generate thumbnail immediately
             thumb_ext = ".jpg" if ext in (".jpg", ".jpeg") else ext
@@ -1749,6 +1924,7 @@ def gallery_upload():
                 "title": image_title,
             })
         except Exception as e:
+            dest.unlink(missing_ok=True)
             errors.append(f"{file.filename}: {str(e)}")
 
     if not results:
@@ -1764,12 +1940,37 @@ def gallery_upload():
 
 @app.route("/chat/api", methods=["POST"])
 def chat_api():
-    data = request.get_json()
-    if not data or "message" not in data:
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict) or not isinstance(data.get("message"), str):
         return jsonify({"error": "message is required"}), 400
 
-    user_msg = data["message"]
+    user_msg = data["message"].strip()
+    if not user_msg or len(user_msg) > 4000:
+        return jsonify({"error": "message must contain 1-4000 characters"}), 400
+
     history = data.get("history", [])  # 前端传来的对话历史
+    if not isinstance(history, list) or len(history) > 20:
+        return jsonify({"error": "history must be a list with at most 20 items"}), 400
+    clean_history = []
+    history_chars = 0
+    for item in history:
+        if not isinstance(item, dict):
+            return jsonify({"error": "invalid history item"}), 400
+        role = item.get("role")
+        content = item.get("content")
+        if role not in {"user", "assistant"} or not isinstance(content, str):
+            return jsonify({"error": "invalid history item"}), 400
+        if not content or len(content) > 4000:
+            return jsonify({"error": "history item is too long"}), 400
+        history_chars += len(content)
+        if history_chars > 20000:
+            return jsonify({"error": "history is too large"}), 400
+        clean_history.append({"role": role, "content": content})
+
+    identity = f"user:{current_user.id}" if current_user.is_authenticated else (request.remote_addr or "unknown")
+    limit = 30 if current_user.is_authenticated else 10
+    if not _allow_request("chat", identity, limit, 60):
+        return jsonify({"error": "请求过于频繁，请稍后再试"}), 429
 
     import urllib.request
     API_URL = "https://api.longcat.chat/openai/v1/chat/completions"
@@ -1788,9 +1989,7 @@ def chat_api():
 
     # ── 上下文：添加对话历史 ──
     messages = [{"role": "system", "content": base_prompt}]
-    for h in history[-20:]:  # 最多保留20轮历史
-        if h.get("role") in ("user", "assistant") and h.get("content"):
-            messages.append({"role": h["role"], "content": h["content"]})
+    messages.extend(clean_history)
     messages.append({"role": "user", "content": user_msg})
 
     # ── 文件感知：仅管理员可用，禁止泄露给普通用户和游客 ──
@@ -1844,11 +2043,12 @@ def chat_api():
             )
             db.commit()
         except Exception:
-            pass  # 记录失败不影响用户使用
+            app.logger.exception("Failed to persist chat log")
 
         return jsonify({"reply": reply})
-    except Exception as e:
-        return jsonify({"reply": f"❌ API 调用失败: {str(e)}"})
+    except Exception:
+        app.logger.exception("Chat provider request failed")
+        return jsonify({"error": "AI 服务暂时不可用，请稍后重试"}), 502
 
 
 def build_file_context(user_msg):
@@ -1938,7 +2138,7 @@ def file_browser(subpath=None):
     else:
         target = base
 
-    if not str(target).startswith(str(base)):
+    if not _is_within(target, base):
         abort(403)
     if not target.exists():
         abort(404)
@@ -2403,7 +2603,7 @@ if __name__ == "__main__":
     print(f"\n  🚀 yousa.dev 已启动!")
     print(f"  ─────────────────────────────")
     print(f"  本地访问:  http://127.0.0.1:{port}")
-    print(f"  管理员:    admin / admin123")
+    print("  管理员:    使用 INITIAL_ADMIN_PASSWORD 或 .admin_bootstrap_credentials")
     print(f"  知识库:    http://127.0.0.1:{port}/wiki/")
     print(f"  AI 聊天:   http://127.0.0.1:{port}/chat")
     print(f"  文件服务:  http://127.0.0.1:{port}/files/\n")

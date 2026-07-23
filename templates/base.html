@@ -3,9 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="csrf-token" content="{{ csrf_token }}">
     <title>{% block title %}yousa.ccwu.cc{% endblock %}</title>
     <link rel="stylesheet" href="/static/style.css?v={{ asset_version }}">
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23222831'/%3E%3Ctext x='50' y='62' text-anchor='middle' font-size='46' fill='%23f7c8d8' font-family='Times New Roman, serif'%3EY%3C/text%3E%3C/svg%3E">
+    <script>
+        (function() {
+            const token = document.querySelector('meta[name="csrf-token"]').content;
+            window.yousaCsrfToken = token;
+            const originalFetch = window.fetch.bind(window);
+            window.fetch = function(input, options) {
+                const init = Object.assign({}, options || {});
+                const method = String(init.method || 'GET').toUpperCase();
+                const url = new URL(typeof input === 'string' ? input : input.url, location.href);
+                if (url.origin === location.origin && !['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+                    const headers = new Headers(init.headers || {});
+                    headers.set('X-CSRF-Token', token);
+                    init.headers = headers;
+                }
+                return originalFetch(input, init);
+            };
+            document.addEventListener('DOMContentLoaded', function() {
+                document.querySelectorAll('form').forEach(function(form) {
+                    const method = String(form.method || 'GET').toUpperCase();
+                    if (method === 'GET' || form.querySelector('input[name="csrf_token"]')) return;
+                    const field = document.createElement('input');
+                    field.type = 'hidden';
+                    field.name = 'csrf_token';
+                    field.value = token;
+                    form.appendChild(field);
+                });
+            });
+        })();
+    </script>
     {% block head %}{% endblock %}
 </head>
 <body>
@@ -44,7 +74,10 @@
                     {% endif %}
                     <span class="nav-user">{{ current_user.nickname }}</span>
                     <a href="/profile" class="nav-link">设置</a>
-                    <a href="/logout" class="nav-link">退出</a>
+                    <form method="post" action="/logout" style="display:inline">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <button type="submit" class="nav-link" style="border:0;background:none;cursor:pointer">退出</button>
+                    </form>
                 {% else %}
                     <a href="/login" class="nav-link nav-login">登录</a>
                 {% endif %}

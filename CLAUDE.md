@@ -71,11 +71,12 @@ D:\DeepSeek\yousa-android\    ← 安卓 App 项目（无 Git）
 - 修改后需 `nginx -s reload`
 
 ### 用户系统
-| 角色 | 用户名 | 密码 |
-|------|--------|------|
-| 管理员 | admin | admin123 |
-| 普通用户 | user | user123 |
-| 游客 | 无需登录 | - |
+
+- 首次启动通过 `INITIAL_ADMIN_USERNAME` 与 `INITIAL_ADMIN_PASSWORD` 创建管理员。
+- 未提供密码时会生成随机密码并写入仅限本机读取的 `.admin_bootstrap_credentials`。
+- 旧版本的 `admin123`、`yousa123` 会在启动时自动轮换。
+- Agent Bridge 自动生成 `.agent_phone_key` 与 `.agent_hermes_key`，调用时通过
+  `X-Agent-Key` 发送对应角色的密钥。
 
 ### 应用路由
 | 路由 | 功能 |
@@ -166,10 +167,8 @@ cd /d/DeepSeek/yousa-android && gradle assembleDebug --no-daemon 2>&1 | tail -5
 
 ### 认证方式
 
-| 方式 | 说明 |
-|------|------|
-| Session cookie | 浏览器登录 admin 后自动携带 |
-| X-API-Key 头 | 值写在 `.apikey` 文件中，无需登录 |
+仅接受专用 `ADMIN_EXEC_API_KEY`（或本机 `.admin_exec_key`）通过
+`X-Admin-Exec-Key` 请求头认证。AI 服务密钥 `.apikey` 不能执行命令。
 
 ### 使用示例
 
@@ -178,9 +177,9 @@ cd /d/DeepSeek/yousa-android && gradle assembleDebug --no-daemon 2>&1 | tail -5
 bash server-cmd.sh "cat /opt/yousa/static/version.json"
 
 # 直接 curl 调用
-API_KEY=$(cat .apikey)
+API_KEY=$(cat .admin_exec_key)
 curl -s -X POST https://yousa.ccwu.cc/admin/exec \
-  -H "X-API-Key: $API_KEY" \
+  -H "X-Admin-Exec-Key: $API_KEY" \
   --data-urlencode "cmd=systemctl status yousa --no-pager -l"
 ```
 

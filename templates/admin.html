@@ -97,7 +97,7 @@
                         <td class="admin-actions">
                             {% if user.id != current_user.id %}
                             <form method="post" action="/admin/user/{{ user.id }}/password" class="inline-form" onsubmit="return confirm('重置 {{ user.username }} 的密码？')">
-                                <input type="password" name="new_password" class="pw-input" placeholder="新密码" required>
+                                <input type="password" name="new_password" class="pw-input" placeholder="新密码（至少 8 位）" required minlength="8">
                                 <button type="submit" class="form-btn form-btn-sm">🔑</button>
                             </form>
                             <form method="post" action="/admin/user/{{ user.id }}/delete" class="inline-form"
