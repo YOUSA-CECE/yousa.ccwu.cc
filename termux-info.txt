@@ -1,0 +1,25 @@
+/data/data/com.termux/files/home
+---PS---
+error: unknown user-defined format specifier "PID"
+
+Usage:
+ ps [options]
+
+ Try 'ps --help <simple|list|output|threads|misc|all>'
+  or 'ps --help <s|l|o|t|m|a>'
+ for additional help text.
+
+For more details see ps(1).
+---PYTHON---
+PID=31480
+/data/data/com.termux/files/home/yousa.ccwu.cc
+/data/data/com.termux/files/usr/bin/python3.14 /data/data/com.termux/files/usr/bin/gunicorn -w 2 --timeout 600 --backlog 2048 -b 127.0.0.1:8000 app:app 
+PID=31481
+/data/data/com.termux/files/home/yousa.ccwu.cc
+/data/data/com.termux/files/usr/bin/python3.14 /data/data/com.termux/files/usr/bin/gunicorn -w 2 --timeout 600 --backlog 2048 -b 127.0.0.1:8000 app:app 
+PID=31482
+/data/data/com.termux/files/home/yousa.ccwu.cc
+/data/data/com.termux/files/usr/bin/python3.14 /data/data/com.termux/files/usr/bin/gunicorn -w 2 --timeout 600 --backlog 2048 -b 127.0.0.1:8000 app:app 
+PID=32707
+/data/data/com.termux/files/home/yousa.ccwu.cc
+python3.14 monitor.py 

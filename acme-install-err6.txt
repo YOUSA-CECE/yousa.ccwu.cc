@@ -1,0 +1,3 @@
+[Sun Jul  5 23:31:25 CST 2026] Please install openssl first. ACME_OPENSSL_BIN=openssl
+[Sun Jul  5 23:31:25 CST 2026] We need openssl to generate keys.
+[Sun Jul  5 23:31:25 CST 2026] Pre-check failed, cannot install.

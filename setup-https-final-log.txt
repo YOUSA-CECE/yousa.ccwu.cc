@@ -1,0 +1,61 @@
+[Sun Jul  5 23:32:59 CST 2026] Using CA: https://acme-v02.api.letsencrypt.org/directory
+[Sun Jul  5 23:32:59 CST 2026] Account key creation OK.
+[Sun Jul  5 23:32:59 CST 2026] Registering account: https://acme-v02.api.letsencrypt.org/directory
+[Sun Jul  5 23:33:03 CST 2026] Registered
+[Sun Jul  5 23:33:03 CST 2026] ACCOUNT_THUMBPRINT='AgiQ-xuDaJylXy5hikLVgXGJAuOpScRx3GVHaEo56Tk'
+[Sun Jul  5 23:33:03 CST 2026] Creating domain key
+[Sun Jul  5 23:33:03 CST 2026] The domain key is here: /data/data/com.termux/files/home/.acme.sh/direct.yousa.ccwu.cc_ecc/direct.yousa.ccwu.cc.key
+[Sun Jul  5 23:33:03 CST 2026] Single domain='direct.yousa.ccwu.cc'
+[Sun Jul  5 23:33:08 CST 2026] Getting webroot for domain='direct.yousa.ccwu.cc'
+[Sun Jul  5 23:33:08 CST 2026] Adding TXT value: nGJ3olnAYEsZe-X-Q_Gvj_-fm-P2kNbt2XSiumC2Saw for domain: _acme-challenge.direct.yousa.ccwu.cc
+[Sun Jul  5 23:33:15 CST 2026] Adding record
+[Sun Jul  5 23:33:16 CST 2026] Added, OK
+[Sun Jul  5 23:33:16 CST 2026] The TXT record has been successfully added.
+[Sun Jul  5 23:33:16 CST 2026] Let's check each DNS record now. Sleeping for 20 seconds first.
+[Sun Jul  5 23:33:36 CST 2026] You can use '--dnssleep' to disable public dns checks.
+[Sun Jul  5 23:33:36 CST 2026] See: https://github.com/acmesh-official/acme.sh/wiki/dnscheck
+[Sun Jul  5 23:33:37 CST 2026] Checking direct.yousa.ccwu.cc for _acme-challenge.direct.yousa.ccwu.cc
+[Sun Jul  5 23:33:49 CST 2026] Success for domain direct.yousa.ccwu.cc '_acme-challenge.direct.yousa.ccwu.cc'.
+[Sun Jul  5 23:33:49 CST 2026] All checks succeeded
+[Sun Jul  5 23:33:49 CST 2026] Verifying: direct.yousa.ccwu.cc
+[Sun Jul  5 23:33:51 CST 2026] Pending. The CA is processing your order, please wait. (1/30)
+[Sun Jul  5 23:33:55 CST 2026] Success
+[Sun Jul  5 23:33:55 CST 2026] Removing DNS records.
+[Sun Jul  5 23:33:55 CST 2026] Removing txt: nGJ3olnAYEsZe-X-Q_Gvj_-fm-P2kNbt2XSiumC2Saw for domain: _acme-challenge.direct.yousa.ccwu.cc
+[Sun Jul  5 23:34:05 CST 2026] Successfully removed
+[Sun Jul  5 23:34:06 CST 2026] Verification finished, beginning signing.
+[Sun Jul  5 23:34:06 CST 2026] Let's finalize the order.
+[Sun Jul  5 23:34:06 CST 2026] Le_OrderFinalize='https://acme-v02.api.letsencrypt.org/acme/finalize/3504954266/528911315766'
+[Sun Jul  5 23:34:08 CST 2026] Downloading cert.
+[Sun Jul  5 23:34:08 CST 2026] Le_LinkCert='https://acme-v02.api.letsencrypt.org/acme/cert/055f43c74c5354d55063e65d5c257b323181'
+[Sun Jul  5 23:34:09 CST 2026] Cert success.
+-----BEGIN CERTIFICATE-----
+MIIDkzCCAxqgAwIBAgISBV9Dx0xTVNVQY+ZdXCV7MjGBMAoGCCqGSM49BAMDMDMx
+CzAJBgNVBAYTAlVTMRYwFAYDVQQKEw1MZXQncyBFbmNyeXB0MQwwCgYDVQQDEwNZ
+RTEwHhcNMjYwNzA1MTQzNTM3WhcNMjYxMDAzMTQzNTM2WjAfMR0wGwYDVQQDExRk
+aXJlY3QueW91c2EuY2N3dS5jYzBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABNIt
+7F3cQ1cuN6HlcAnH1Lw1nefLeZb73eQXXWaBA9hIhPTxUeE1QMx+BGr1uvXURHdp
+NVnBldzMcfQOTeMWznqjggIgMIICHDAOBgNVHQ8BAf8EBAMCB4AwEwYDVR0lBAww
+CgYIKwYBBQUHAwEwDAYDVR0TAQH/BAIwADAdBgNVHQ4EFgQUuwmu48gDR+NE30e+
+GoF5U4zboxUwHwYDVR0jBBgwFoAUuyDKRwv+1+Wc+Y8JKqOMN0WxvNgwMwYIKwYB
+BQUHAQEEJzAlMCMGCCsGAQUFBzAChhdodHRwOi8veWUxLmkubGVuY3Iub3JnLzAf
+BgNVHREEGDAWghRkaXJlY3QueW91c2EuY2N3dS5jYzATBgNVHSAEDDAKMAgGBmeB
+DAECATAtBgNVHR8EJjAkMCKgIKAehhxodHRwOi8veWUxLmMubGVuY3Iub3JnLzIu
+Y3JsMIIBCwYKKwYBBAHWeQIEAgSB/ASB+QD3AH4ARq+GPTs+5Z+ld96oJF02sNnt
+IqIj9GF3QSKUUu6VUF8AAAGfMupbVAAIAAAFAAvTr9YEAwBHMEUCIQCzpaTseGyE
+YjmRY2xFMFVDjEKV9PbuyGH3GljzfICZOwIgRQ0n3BxHvTlLIMpySoK98SlxUWVj
+ewuo4VGFAyPVaIQAdQCvZ4g7V7BO3Y+m2X72LqjrgQrHcWDwJF5V1gwv54WHOgAA
+AZ8y6luXAAAEAwBGMEQCIDBhuei3fH5HT70Pc1MBLqRgaaVXC9RltrvuUDhXlr+h
+AiBAXIKEZ+hYAXQjn4thMN+kc/ymJTkT7hG06NBKXBuuxDAKBggqhkjOPQQDAwNn
+ADBkAjBe1x38f9NJFRftLvfypMpODoQj8iNtYGhZLdBrz6VSEwtJJ7HlE7Ig0XnG
+itqDUbUCMA2bybUdK6o0K7L+E65+Cc6vFlJVLSC7OC7OWw/ffEByV3Cl7tqR6RBU
+cIThMR8knQ==
+-----END CERTIFICATE-----
+[Sun Jul  5 23:34:10 CST 2026] Your cert is in: /data/data/com.termux/files/home/.acme.sh/direct.yousa.ccwu.cc_ecc/direct.yousa.ccwu.cc.cer
+[Sun Jul  5 23:34:10 CST 2026] Your cert key is in: /data/data/com.termux/files/home/.acme.sh/direct.yousa.ccwu.cc_ecc/direct.yousa.ccwu.cc.key
+[Sun Jul  5 23:34:10 CST 2026] The intermediate CA cert is in: /data/data/com.termux/files/home/.acme.sh/direct.yousa.ccwu.cc_ecc/ca.cer
+[Sun Jul  5 23:34:10 CST 2026] And the full-chain cert is in: /data/data/com.termux/files/home/.acme.sh/direct.yousa.ccwu.cc_ecc/fullchain.cer
+[Sun Jul  5 23:34:11 CST 2026] ARI suggestedWindow: 2026-09-02T17:19:41Z to 2026-09-04T12:30:30Z
+[Sun Jul  5 23:34:11 CST 2026] Next renewal time picked from ARI window: 2026-09-03T23:55:53Z
+[Sun Jul  5 23:34:12 CST 2026] Installing key to: /data/data/com.termux/files/home/.ssl/direct.yousa.ccwu.cc.key
+[Sun Jul  5 23:34:12 CST 2026] Installing full chain to: /data/data/com.termux/files/home/.ssl/direct.yousa.ccwu.cc.fullchain.pem

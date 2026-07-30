@@ -1,0 +1,2 @@
+The program openssl is not installed. Install it by executing:
+ pkg install openssl-tool

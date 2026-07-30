@@ -167,6 +167,13 @@ login_manager.login_view = "login"
 login_manager.login_message = None
 
 
+@login_manager.unauthorized_handler
+def unauthorized():
+    """Redirect to the public login URL instead of an internal one."""
+    next_url = quote(request.path)
+    return redirect(f"https://yousa.ccwu.cc/login?next={next_url}")
+
+
 def csrf_token():
     token = session.get("_csrf_token")
     if not token:

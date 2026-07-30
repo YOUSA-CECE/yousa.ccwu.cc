@@ -1,0 +1,1 @@
+6277 /data/data/com.termux/files/usr/bin/bash /data/data/com.termux/files/home/cloudflare-ddns-loop.sh

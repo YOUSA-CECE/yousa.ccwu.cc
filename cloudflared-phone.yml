@@ -1,0 +1,16 @@
+tunnel: b1ca7f98-7966-49a1-b442-4000d83460ee
+credentials-file: /data/data/com.termux/files/home/.cloudflared/b1ca7f98-7966-49a1-b442-4000d83460ee.json
+protocol: quic
+edge-ip-version: "4"
+ingress:
+  - hostname: monitor.yousa.ccwu.cc
+    service: http://127.0.0.1:5001
+    originRequest:
+      noTLSVerify: true
+      disableChunkedEncoding: true
+  - hostname: phone.yousa.ccwu.cc
+    service: http://127.0.0.1:5000
+    originRequest:
+      noTLSVerify: true
+      disableChunkedEncoding: true
+  - service: http_status:404

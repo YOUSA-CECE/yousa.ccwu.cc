@@ -1,0 +1,67 @@
+./acme.sh: 2: : not found
+./acme.sh: 4: : not found
+./acme.sh: 6: : not found
+./acme.sh: 8: : not found
+./acme.sh: 10: : not found
+./acme.sh: 12: : not found
+./acme.sh: 14: : not found
+./acme.sh: 16: : not found
+./acme.sh: 20: : not found
+./acme.sh: 22: : not found
+./acme.sh: 25: : not found
+./acme.sh: 28: : not found
+./acme.sh: 31: : not found
+./acme.sh: 34: : not found
+./acme.sh: 36: : not found
+./acme.sh: 39: : not found
+./acme.sh: 49: : not found
+./acme.sh: 51: : not found
+./acme.sh: 53: : not found
+./acme.sh: 56: : not found
+./acme.sh: 58: : not found
+./acme.sh: 63: : not found
+./acme.sh: 66: : not found
+./acme.sh: 68: : not found
+./acme.sh: 70: : not found
+./acme.sh: 72: : not found
+./acme.sh: 77: : not found
+./acme.sh: 79: : not found
+./acme.sh: 81: : not found
+./acme.sh: 85: : not found
+./acme.sh: 88: : not found
+./acme.sh: 91: : not found
+./acme.sh: 95: : not found
+./acme.sh: 98: : not found
+./acme.sh: 101: : not found
+./acme.sh: 106: : not found
+./acme.sh: 112: : not found
+./acme.sh: 117: : not found
+./acme.sh: 119: : not found
+./acme.sh: 123: : not found
+./acme.sh: 134: : not found
+./acme.sh: 138: : not found
+./acme.sh: 143: : not found
+./acme.sh: 145: : not found
+./acme.sh: 148: : not found
+./acme.sh: 150: : not found
+./acme.sh: 152: : not found
+./acme.sh: 154: : not found
+./acme.sh: 156: : not found
+./acme.sh: 158: : not found
+./acme.sh: 160: : not found
+./acme.sh: 162: : not found
+./acme.sh: 164: : not found
+./acme.sh: 166: : not found
+./acme.sh: 168: : not found
+./acme.sh: 170: : not found
+./acme.sh: 172: : not found
+./acme.sh: 174: : not found
+./acme.sh: 176: : not found
+./acme.sh: 178: : not found
+./acme.sh: 180: : not found
+./acme.sh: 182: : not found
+./acme.sh: 184: : not found
+./acme.sh: 186: : not found
+./acme.sh: 188: : not found
+./acme.sh: 190: : not found
+./acme.sh: 257: Syntax error: "elif" unexpected (expecting "then")

@@ -1,0 +1,86 @@
+No mirror or mirror group selected. You might want to select one by running 'termux-change-repo'
+Testing the available mirrors:
+[*] (10) https://packages-cf.termux.dev/apt/termux-main: ok
+[*] (1) https://linux.domainesia.com/applications/termux/termux-main: ok
+[*] (1) https://termux.niranjan.co/termux-main: ok
+[*] (1) https://mirror.bardia.tech/termux/termux-main: bad
+[*] (1) https://mirrors.saswata.cc/termux/termux-main: bad
+[*] (1) https://mirrors.ravidwivedi.in/termux/termux-main: ok
+[*] (1) https://mirror.textcord.xyz/termux/termux-main: bad
+[*] (1) https://mirrors.krnk.org/apt/termux/termux-main: ok
+[*] (1) https://mirror.rinarin.dev/termux/termux-main: ok
+[*] (1) https://mirror.jeonnam.school/termux/termux-main: ok
+[*] (1) https://mirrors.nguyenhoang.cloud/termux/termux-main: ok
+[*] (1) https://mirrors.cbrx.io/apt/termux/termux-main: ok
+[*] (1) https://tmx.xvx.my.id/apt/termux-main: bad
+[*] (1) https://mirror.albony.in/termux/termux-main: ok
+[*] (1) https://mirror.twds.com.tw/termux/termux-main: ok
+[*] (1) https://mirror.nevacloud.com/applications/termux/termux-main: ok
+[*] (1) https://mirror.meowsmp.net/termux/termux-main: bad
+[*] (1) https://mirror.freedif.org/termux/termux-main: ok
+[*] (1) https://mirrors.in.sahilister.net/termux/termux-main/: ok
+[*] (1) https://mirror.iscas.ac.cn/termux/apt/termux-main: ok
+[*] (1) https://mirrors.sau.edu.cn/termux/apt/termux-main: ok
+[*] (1) https://mirrors.sdu.edu.cn/termux/termux-main: ok
+[*] (1) https://mirrors.aliyun.com/termux/termux-main: ok
+[*] (1) https://mirrors.cernet.edu.cn/termux/apt/termux-main: ok
+[*] (1) https://mirrors.cqupt.edu.cn/termux/termux-main: ok
+[*] (1) https://mirrors.sustech.edu.cn/termux/apt/termux-main: ok
+[*] (1) https://mirrors.bfsu.edu.cn/termux/apt/termux-main: ok
+[*] (1) https://mirrors.pku.edu.cn/termux/termux-main/: ok
+[*] (1) https://mirrors.hust.edu.cn/termux/apt/termux-main: ok
+[*] (1) https://mirrors.tuna.tsinghua.edu.cn/termux/apt/termux-main: ok
+[*] (1) https://mirror.sjtu.edu.cn/termux/termux-main/: ok
+[*] (1) https://mirror.nyist.edu.cn/termux/apt/termux-main: ok
+[*] (1) https://mirrors.ustc.edu.cn/termux/termux-main: ok
+[*] (1) https://mirrors.zju.edu.cn/termux/apt/termux-main: ok
+[*] (1) https://mirrors.nju.edu.cn/termux/apt/termux-main: ok
+[*] (4) https://grimler.se/termux/termux-main: ok
+[*] (1) https://mirror.polido.pt/termux/termux-main: bad
+[*] (1) https://termux.3san.dev/termux/termux-main: ok
+[*] (1) https://mirrors.medzik.dev/termux/termux-main: bad
+[*] (1) https://mirror.accum.se/mirror/termux.dev/termux-main: ok
+[*] (1) https://mirror.mwt.me/termux/main: ok
+[*] (1) https://ro.mirror.flokinet.net/termux/termux-main: ok
+[*] (1) https://md.mirrors.hacktegic.com/termux/termux-main: bad
+[*] (1) https://is.mirror.flokinet.net/termux/termux-main: ok
+[*] (1) https://mirror.termux.dev/termux-main: bad
+[*] (1) https://termux.mentality.rip/termux-main: bad
+[*] (1) https://nl.mirror.flokinet.net/termux/termux-main: ok
+[*] (1) https://termux.cdn.lumito.net/termux-main: ok
+[*] (1) https://mirror.leitecastro.com/termux/termux-main: bad
+[*] (1) https://mirror.bouwhuis.network/termux/termux-main: ok
+[*] (1) https://termux.librehat.com/apt/termux-main: ok
+[*] (1) https://mirror.autkin.net/termux/termux-main: ok
+[*] (1) https://mirror.sunred.org/termux/termux-main: ok
+[*] (1) https://packages.termux.dev/apt/termux-main: ok
+[*] (1) https://ftp.agdsn.de/termux/termux-main: ok
+[*] (1) https://ftp.fau.de/termux/termux-main: ok
+[*] (1) https://mirrors.cfe.re/termux/termux-main: bad
+[*] (1) https://mirrors.de.sahilister.net/termux/termux-main: ok
+[*] (1) https://gnlug.org/pub/termux/termux-main: ok
+[*] (1) https://mirror.mwt.me/termux/main: ok
+[*] (1) https://mirror.quantum5.ca/termux/termux-main: ok
+[*] (1) https://mirrors.utermux.dev/termux/termux-main: ok
+[*] (1) https://plug-mirror.rcac.purdue.edu/termux/termux-main: bad
+[*] (1) https://mirror.vern.cc/termux/termux-main: bad
+[*] (1) https://dl.kcubeterm.com/termux-main: bad
+[*] (1) https://termux.danyael.xyz/termux/termux-main: ok
+[*] (1) https://mirror.csclub.uwaterloo.ca/termux/termux-main: ok
+[*] (1) https://mirror.fcix.net/termux/termux-main: ok
+[*] (1) https://mirrors.middlendian.com/termux/termux-main: bad
+[*] (1) https://repository.su/termux/termux-main/: ok
+[*] (1) http://mirror.mephi.ru/termux/termux-main: ok
+Picking mirror: (30) /data/data/com.termux/files/usr/etc/termux/mirrors/chinese_mainland/mirrors.bfsu.edu.cn
+Get:1 https://mirrors.bfsu.edu.cn/termux/apt/termux-main stable InRelease [14.0 kB]
+Get:2 https://mirrors.bfsu.edu.cn/termux/apt/termux-main stable/main aarch64 Packages [550 kB]
+Fetched 564 kB in 2s (325 kB/s)
+Reading package lists...
+Building dependency tree...
+Reading state information...
+1 package can be upgraded. Run 'apt list --upgradable' to see it.
+Reading package lists...
+Building dependency tree...
+Reading state information...
+openssl is already the newest version (1:3.6.3).
+0 upgraded, 0 newly installed, 0 to remove and 1 not upgraded.

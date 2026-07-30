@@ -1,0 +1,2 @@
+[Sun Jul  5 23:33:37 CST 2026] Please refer to https://curl.haxx.se/libcurl/c/libcurl-errors.html for error code: 35
+[Sun Jul  5 23:33:47 CST 2026] Please refer to https://curl.haxx.se/libcurl/c/libcurl-errors.html for error code: 28

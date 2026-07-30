@@ -1,0 +1,7 @@
+[Sun Jul  5 23:32:33 CST 2026] Installing to /data/data/com.termux/files/home/.acme.sh
+[Sun Jul  5 23:32:33 CST 2026] Installed to /data/data/com.termux/files/home/.acme.sh/acme.sh
+[Sun Jul  5 23:32:33 CST 2026] No profile has been found, you will need to change your working directory to /data/data/com.termux/files/home/.acme.sh to use acme.sh
+[Sun Jul  5 23:32:34 CST 2026] Installing cron job
+Backup of u0_a158's previous crontab saved to /data/data/com.termux/files/home/.cache/crontab/crontab.bak
+[Sun Jul  5 23:32:34 CST 2026] bash has been found. Changing the shebang to use bash as preferred.
+[Sun Jul  5 23:32:42 CST 2026] OK

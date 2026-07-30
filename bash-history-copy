@@ -1,0 +1,4 @@
+bash /sdcard/Download/termux-import-cert.sh
+bash /sdcard/Download/termux-cloudflare-setup.sh
+bash /sdcard/Download/termux-install-services.sh
+bash /sdcard/Download/termux-finalize-boot.sh
