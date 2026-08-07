@@ -30,3 +30,7 @@ android/build/
 android/app/build/
 android/.gradle/
 android/local.properties
+
+# Temp files from Claude Code cli
+.ui-v2-parts/
+.ui-v2-brief.md
