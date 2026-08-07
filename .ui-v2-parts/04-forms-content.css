@@ -1,0 +1,378 @@
+
+/* ═══════════ 组件层 3/4：按钮、表单、内容页 ═══════════ */
+
+/* ── 按钮统一 ── */
+body.ui-v2 .btn-primary,
+body.ui-v2 .form-btn {
+  background: linear-gradient(135deg, var(--v2-accent), #a8476b);
+  color: #fff;
+  border: 0;
+  border-radius: var(--v2-radius-sm);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  box-shadow: 0 4px 14px rgba(196, 90, 130, 0.26);
+  transition: transform var(--v2-duration) var(--v2-ease),
+              box-shadow var(--v2-duration) var(--v2-ease),
+              filter var(--v2-duration) var(--v2-ease);
+}
+body.ui-v2 .btn-primary:hover,
+body.ui-v2 .form-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(196, 90, 130, 0.34);
+  filter: brightness(1.05);
+}
+body.ui-v2 .btn-primary:active,
+body.ui-v2 .form-btn:active {
+  transform: translateY(0) scale(0.98);
+  box-shadow: 0 2px 8px rgba(196, 90, 130, 0.22);
+}
+
+body.ui-v2 .btn-secondary {
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--v2-text);
+  border: 1px solid var(--v2-border-subtle);
+  border-radius: var(--v2-radius-sm);
+  font-weight: 600;
+  transition: transform var(--v2-duration) var(--v2-ease),
+              background var(--v2-duration) var(--v2-ease),
+              border-color var(--v2-duration) var(--v2-ease);
+}
+body.ui-v2 .btn-secondary:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.92);
+  border-color: rgba(196, 90, 130, 0.3);
+  color: var(--v2-accent);
+}
+body.ui-v2 .btn-secondary:active {
+  transform: translateY(0) scale(0.98);
+}
+
+body.ui-v2 .btn-danger {
+  background: linear-gradient(135deg, #d9534f, #b8332f);
+  color: #fff;
+  border: 0;
+  border-radius: var(--v2-radius-sm);
+  font-weight: 600;
+  transition: transform var(--v2-duration) var(--v2-ease),
+              filter var(--v2-duration) var(--v2-ease);
+}
+body.ui-v2 .btn-danger:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.08);
+}
+
+body.ui-v2 .form-btn-sm {
+  border-radius: var(--v2-radius-xs);
+  font-weight: 600;
+}
+
+/* 禁用态 */
+body.ui-v2 .btn-primary:disabled,
+body.ui-v2 .form-btn:disabled,
+body.ui-v2 .btn-secondary:disabled {
+  opacity: 0.55;
+  transform: none;
+  filter: none;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* ── 输入框 ── */
+body.ui-v2 .form-input,
+body.ui-v2 input[type="text"],
+body.ui-v2 input[type="search"],
+body.ui-v2 input[type="password"],
+body.ui-v2 input[type="email"],
+body.ui-v2 textarea,
+body.ui-v2 select {
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid var(--v2-border-subtle);
+  border-radius: var(--v2-radius-sm);
+  color: var(--v2-text);
+  font-family: var(--v2-font);
+  transition: border-color var(--v2-duration) var(--v2-ease),
+              box-shadow var(--v2-duration) var(--v2-ease),
+              background var(--v2-duration) var(--v2-ease);
+}
+body.ui-v2 .form-input:focus,
+body.ui-v2 input[type="text"]:focus,
+body.ui-v2 input[type="search"]:focus,
+body.ui-v2 input[type="password"]:focus,
+body.ui-v2 input[type="email"]:focus,
+body.ui-v2 textarea:focus,
+body.ui-v2 select:focus {
+  outline: none;
+  background: #fff;
+  border-color: rgba(196, 90, 130, 0.5);
+  box-shadow: 0 0 0 3px rgba(196, 90, 130, 0.13);
+}
+body.ui-v2 ::placeholder {
+  color: var(--v2-text-dim);
+  opacity: 0.8;
+}
+
+/* ── 键盘可见焦点（无障碍） ── */
+body.ui-v2 a:focus-visible,
+body.ui-v2 button:focus-visible,
+body.ui-v2 .nav-link:focus-visible,
+body.ui-v2 .feature-card:focus-visible,
+body.ui-v2 .activity-item:focus-visible {
+  outline: 2px solid var(--v2-accent);
+  outline-offset: 3px;
+  border-radius: var(--v2-radius-xs);
+}
+
+/* ── 页头 ── */
+body.ui-v2 .page-header {
+  border-bottom: 1px solid var(--v2-border-subtle);
+}
+body.ui-v2 .page-header h1,
+body.ui-v2 .page-header h2 {
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+body.ui-v2 .page-desc {
+  color: var(--v2-text-muted);
+}
+
+/* ── 面包屑 ── */
+body.ui-v2 .breadcrumb {
+  color: var(--v2-text-dim);
+  font-size: 0.82rem;
+}
+body.ui-v2 .breadcrumb a {
+  color: var(--v2-accent-2);
+}
+body.ui-v2 .breadcrumb a:hover {
+  color: var(--v2-accent);
+}
+
+/* ── Wiki 布局 ── */
+body.ui-v2 .wiki-sidebar,
+body.ui-v2 .wiki-content {
+  background: var(--v2-panel);
+  -webkit-backdrop-filter: saturate(170%) blur(18px);
+  backdrop-filter: saturate(170%) blur(18px);
+  border: 1px solid var(--v2-border);
+  border-radius: var(--v2-radius);
+  box-shadow: var(--v2-shadow);
+}
+
+body.ui-v2 .sidebar-title {
+  color: var(--v2-text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+body.ui-v2 .tree-item,
+body.ui-v2 .tree-file {
+  border-radius: var(--v2-radius-xs);
+  transition: background var(--v2-duration) var(--v2-ease),
+              transform var(--v2-duration) var(--v2-ease),
+              color var(--v2-duration) var(--v2-ease);
+}
+body.ui-v2 .tree-file:hover {
+  background: rgba(196, 90, 130, 0.09);
+  transform: translateX(3px);
+  color: var(--v2-accent);
+}
+
+body.ui-v2 .wiki-page-title {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* ── Markdown 正文排版 ── */
+body.ui-v2 .markdown-body {
+  line-height: 1.85;
+  color: var(--v2-text);
+}
+body.ui-v2 .markdown-body h1,
+body.ui-v2 .markdown-body h2,
+body.ui-v2 .markdown-body h3 {
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  margin-top: 1.8em;
+}
+body.ui-v2 .markdown-body h2 {
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--v2-border-subtle);
+}
+body.ui-v2 .markdown-body a {
+  color: var(--v2-accent-2);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-color: rgba(79, 143, 170, 0.35);
+}
+body.ui-v2 .markdown-body a:hover {
+  color: var(--v2-accent);
+  text-decoration-color: var(--v2-accent);
+}
+body.ui-v2 .markdown-body code {
+  font-family: var(--v2-font-mono);
+  background: rgba(70, 85, 105, 0.08);
+  border-radius: var(--v2-radius-xs);
+  padding: 0.14em 0.4em;
+  font-size: 0.88em;
+}
+body.ui-v2 .markdown-body pre {
+  background: rgba(30, 35, 44, 0.95);
+  border-radius: var(--v2-radius-sm);
+  box-shadow: var(--v2-shadow-sm);
+  overflow-x: auto;
+}
+body.ui-v2 .markdown-body pre code {
+  background: none;
+  color: #e6e9ef;
+  padding: 0;
+}
+body.ui-v2 .markdown-body blockquote {
+  border-left: 3px solid var(--v2-accent);
+  background: rgba(196, 90, 130, 0.05);
+  border-radius: 0 var(--v2-radius-xs) var(--v2-radius-xs) 0;
+  color: var(--v2-text-muted);
+}
+body.ui-v2 .markdown-body img {
+  border-radius: var(--v2-radius-sm);
+  box-shadow: var(--v2-shadow-sm);
+  max-width: 100%;
+  height: auto;
+}
+body.ui-v2 .markdown-body table {
+  border-radius: var(--v2-radius-sm);
+  overflow: hidden;
+  box-shadow: var(--v2-shadow-sm);
+}
+body.ui-v2 .markdown-body th {
+  background: rgba(79, 143, 170, 0.10);
+  font-weight: 650;
+}
+
+/* ── 博客列表 ── */
+body.ui-v2 .blog-card {
+  border-radius: var(--v2-radius);
+  transition: transform var(--v2-duration) var(--v2-ease),
+              box-shadow var(--v2-duration) var(--v2-ease),
+              border-color var(--v2-duration) var(--v2-ease);
+}
+body.ui-v2 .blog-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--v2-shadow-lg);
+  border-color: rgba(196, 90, 130, 0.22);
+}
+body.ui-v2 .blog-card-title,
+body.ui-v2 .blog-title-link {
+  font-weight: 660;
+  letter-spacing: -0.01em;
+  color: var(--v2-text);
+}
+body.ui-v2 .blog-title-link:hover {
+  color: var(--v2-accent);
+}
+body.ui-v2 .blog-meta,
+body.ui-v2 .blog-sep {
+  color: var(--v2-text-dim);
+  font-size: 0.8rem;
+  font-family: var(--v2-font-mono);
+}
+body.ui-v2 .blog-excerpt {
+  color: var(--v2-text-muted);
+}
+
+/* ── 搜索页 ── */
+body.ui-v2 .search-hero,
+body.ui-v2 .search-card {
+  border-radius: var(--v2-radius);
+}
+body.ui-v2 .search-result-item {
+  border-radius: var(--v2-radius-sm);
+  border: 1px solid transparent;
+  transition: background var(--v2-duration) var(--v2-ease),
+              transform var(--v2-duration) var(--v2-ease),
+              border-color var(--v2-duration) var(--v2-ease);
+}
+body.ui-v2 .search-result-item:hover {
+  background: rgba(255, 255, 255, 0.72);
+  border-color: var(--v2-border-subtle);
+  transform: translateX(4px);
+}
+body.ui-v2 .search-type {
+  background: rgba(79, 143, 170, 0.12);
+  color: var(--v2-accent-2);
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.16rem 0.6rem;
+}
+body.ui-v2 .search-summary,
+body.ui-v2 .search-empty {
+  color: var(--v2-text-muted);
+}
+body.ui-v2 .search-snippets mark {
+  background: rgba(201, 159, 74, 0.28);
+  color: var(--v2-text);
+  border-radius: 3px;
+  padding: 0 2px;
+}
+
+/* ── 关于页 / App 下载页 ── */
+body.ui-v2 .about-hero,
+body.ui-v2 .about-card,
+body.ui-v2 .app-download-card,
+body.ui-v2 .app-download-hero {
+  border-radius: var(--v2-radius);
+}
+body.ui-v2 .about-card {
+  transition: transform var(--v2-duration) var(--v2-ease),
+              box-shadow var(--v2-duration) var(--v2-ease);
+}
+body.ui-v2 .about-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--v2-shadow-lg);
+}
+body.ui-v2 .app-download-title {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+body.ui-v2 .app-download-subtitle {
+  color: var(--v2-text-muted);
+}
+body.ui-v2 .app-download-button {
+  background: linear-gradient(135deg, var(--v2-accent), #a8476b);
+  color: #fff;
+  border-radius: var(--v2-radius-sm);
+  font-weight: 650;
+  box-shadow: 0 6px 20px rgba(196, 90, 130, 0.28);
+  transition: transform var(--v2-duration) var(--v2-ease),
+              box-shadow var(--v2-duration) var(--v2-ease);
+}
+body.ui-v2 .app-download-button:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 30px rgba(196, 90, 130, 0.36);
+}
+body.ui-v2 .app-phone-icon {
+  animation: v2-float 4s ease-in-out infinite alternate;
+}
+@keyframes v2-float {
+  0%   { transform: translateY(0); }
+  100% { transform: translateY(-8px); }
+}
+
+/* ── 空状态 / 错误页 ── */
+body.ui-v2 .empty-state,
+body.ui-v2 .wiki-empty {
+  color: var(--v2-text-dim);
+}
+body.ui-v2 .error-code {
+  font-family: var(--v2-font-mono);
+  font-weight: 700;
+  background: linear-gradient(120deg, var(--v2-accent), var(--v2-accent-2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+body.ui-v2 .error-message {
+  color: var(--v2-text-muted);
+}

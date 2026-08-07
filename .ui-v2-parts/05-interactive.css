@@ -1,0 +1,298 @@
+
+/* ═══════════ 组件层 4/4：云盘、画廊、聊天、后台、登录 ═══════════ */
+
+/* ── 通用容器玻璃化 ── */
+body.ui-v2 .chat-container,
+body.ui-v2 .file-list,
+body.ui-v2 .auth-card,
+body.ui-v2 .admin-section,
+body.ui-v2 .guestbook-wrap {
+  background: var(--v2-panel);
+  -webkit-backdrop-filter: saturate(170%) blur(18px);
+  backdrop-filter: saturate(170%) blur(18px);
+  border: 1px solid var(--v2-border);
+  border-radius: var(--v2-radius);
+  box-shadow: var(--v2-shadow);
+}
+
+/* ── 文件列表 / 云盘 ── */
+body.ui-v2 .file-item {
+  border-radius: var(--v2-radius-sm);
+  border: 1px solid transparent;
+  transition: background var(--v2-duration) var(--v2-ease),
+              transform var(--v2-duration) var(--v2-ease),
+              border-color var(--v2-duration) var(--v2-ease);
+}
+body.ui-v2 .file-item:hover {
+  background: rgba(255, 255, 255, 0.7);
+  border-color: var(--v2-border-subtle);
+  transform: translateX(3px);
+}
+body.ui-v2 .file-name {
+  color: var(--v2-text);
+  font-weight: 520;
+}
+body.ui-v2 .file-link:hover .file-name {
+  color: var(--v2-accent);
+}
+body.ui-v2 .file-meta {
+  color: var(--v2-text-dim);
+  font-family: var(--v2-font-mono);
+  font-size: 0.76rem;
+}
+body.ui-v2 .file-icon {
+  opacity: 0.85;
+  transition: transform var(--v2-duration) var(--v2-ease);
+}
+body.ui-v2 .file-item:hover .file-icon {
+  transform: scale(1.12);
+}
+
+/* ── 聊天区 ── */
+body.ui-v2 .chat-messages {
+  scroll-behavior: smooth;
+}
+body.ui-v2 .msg,
+body.ui-v2 .msg-item {
+  animation: v2-msg-in 0.3s var(--v2-ease-out) both;
+}
+@keyframes v2-msg-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+body.ui-v2 .msg-bubble {
+  border-radius: var(--v2-radius);
+  box-shadow: var(--v2-shadow-sm);
+  line-height: 1.7;
+}
+body.ui-v2 .msg-user .msg-bubble {
+  background: linear-gradient(135deg, var(--v2-accent), #b04f76);
+  color: #fff;
+}
+body.ui-v2 .msg-avatar {
+  border-radius: 50%;
+  box-shadow: var(--v2-shadow-sm);
+  font-weight: 650;
+}
+body.ui-v2 .chat-input-area {
+  background: rgba(255, 255, 255, 0.82);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  border-top: 1px solid var(--v2-border-subtle);
+  border-radius: 0 0 var(--v2-radius) var(--v2-radius);
+}
+body.ui-v2 .typing-dots span {
+  background: var(--v2-accent);
+  animation: v2-typing 1.3s ease-in-out infinite;
+}
+body.ui-v2 .typing-dots span:nth-child(2) { animation-delay: 0.16s; }
+body.ui-v2 .typing-dots span:nth-child(3) { animation-delay: 0.32s; }
+@keyframes v2-typing {
+  0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
+  30%           { opacity: 1;   transform: translateY(-4px); }
+}
+
+/* ── 像素小狗浮窗 ── */
+body.ui-v2 .dog-chat-toggle {
+  box-shadow: 0 8px 26px rgba(55, 70, 88, 0.2);
+  transition: transform var(--v2-duration) var(--v2-ease),
+              box-shadow var(--v2-duration) var(--v2-ease);
+}
+body.ui-v2 .dog-chat-toggle:hover {
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 14px 34px rgba(55, 70, 88, 0.26);
+}
+body.ui-v2 .dog-chat-toggle:active {
+  transform: translateY(0) scale(0.97);
+}
+body.ui-v2 .dog-chat-panel {
+  background: rgba(255, 255, 255, 0.94);
+  -webkit-backdrop-filter: saturate(180%) blur(22px);
+  backdrop-filter: saturate(180%) blur(22px);
+  border: 1px solid var(--v2-border);
+  border-radius: var(--v2-radius);
+  box-shadow: var(--v2-shadow-lg);
+  animation: v2-dog-panel-in 0.28s var(--v2-ease-out) both;
+}
+@keyframes v2-dog-panel-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+body.ui-v2 .dog-chat-head {
+  border-bottom: 1px solid var(--v2-border-subtle);
+}
+body.ui-v2 .dog-chat-head strong {
+  font-weight: 650;
+  color: var(--v2-text);
+}
+body.ui-v2 .dog-chat-head span {
+  color: var(--v2-text-dim);
+  font-size: 0.75rem;
+}
+body.ui-v2 .dog-chat-head button {
+  border-radius: var(--v2-radius-xs);
+  transition: background var(--v2-duration) var(--v2-ease),
+              transform var(--v2-duration) var(--v2-ease);
+}
+body.ui-v2 .dog-chat-head button:hover {
+  background: rgba(70, 85, 105, 0.09);
+  transform: rotate(90deg);
+}
+body.ui-v2 .dog-msg {
+  animation: v2-msg-in 0.28s var(--v2-ease-out) both;
+}
+body.ui-v2 .dog-msg p {
+  border-radius: var(--v2-radius-sm);
+  line-height: 1.65;
+}
+body.ui-v2 .dog-msg-user p {
+  background: linear-gradient(135deg, var(--v2-accent), #b04f76);
+  color: #fff;
+}
+body.ui-v2 .dog-msg-avatar {
+  border-radius: 50%;
+  font-weight: 650;
+}
+body.ui-v2 .dog-chat-form {
+  border-top: 1px solid var(--v2-border-subtle);
+}
+/* 小狗本体保留像素风，只加轻微待机动画 */
+body.ui-v2 .pixel-dog {
+  animation: v2-dog-idle 2.6s ease-in-out infinite alternate;
+}
+@keyframes v2-dog-idle {
+  0%   { transform: translateY(0); }
+  100% { transform: translateY(-2px); }
+}
+body.ui-v2 .dog-tail {
+  animation: v2-dog-wag 0.7s ease-in-out infinite alternate;
+  transform-origin: left center;
+}
+@keyframes v2-dog-wag {
+  0%   { transform: rotate(-8deg); }
+  100% { transform: rotate(12deg); }
+}
+
+/* ── 留言板 ── */
+body.ui-v2 .msg-item {
+  border-radius: var(--v2-radius-sm);
+  transition: background var(--v2-duration) var(--v2-ease);
+}
+body.ui-v2 .msg-item:hover {
+  background: rgba(255, 255, 255, 0.6);
+}
+
+/* ── 后台管理 ── */
+body.ui-v2 .admin-table-wrap {
+  border-radius: var(--v2-radius-sm);
+  overflow: hidden;
+  box-shadow: var(--v2-shadow-sm);
+  -webkit-overflow-scrolling: touch;
+}
+body.ui-v2 .admin-table th,
+body.ui-v2 .admin-user-table th {
+  background: rgba(79, 143, 170, 0.10);
+  color: var(--v2-text);
+  font-weight: 650;
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+}
+body.ui-v2 .admin-table td,
+body.ui-v2 .admin-user-table td {
+  border-bottom: 1px solid var(--v2-border-subtle);
+}
+body.ui-v2 .admin-table tbody tr,
+body.ui-v2 .admin-user-table tbody tr {
+  transition: background var(--v2-duration) var(--v2-ease);
+}
+body.ui-v2 .admin-table tbody tr:hover,
+body.ui-v2 .admin-user-table tbody tr:hover {
+  background: rgba(196, 90, 130, 0.05);
+}
+
+/* 角色 / 来源徽章 */
+body.ui-v2 .role-badge,
+body.ui-v2 .source-badge {
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 650;
+  padding: 0.14rem 0.58rem;
+  letter-spacing: 0.02em;
+}
+body.ui-v2 .role-admin {
+  background: rgba(196, 90, 130, 0.14);
+  color: #a8476b;
+}
+body.ui-v2 .role-user {
+  background: rgba(79, 143, 170, 0.14);
+  color: #3d7590;
+}
+body.ui-v2 .source-app {
+  background: rgba(201, 159, 74, 0.16);
+  color: #96741f;
+}
+body.ui-v2 .source-web {
+  background: rgba(70, 85, 105, 0.10);
+  color: var(--v2-text-muted);
+}
+body.ui-v2 .role-select {
+  border-radius: var(--v2-radius-xs);
+  font-size: 0.8rem;
+}
+body.ui-v2 .activity-time,
+body.ui-v2 .session-info {
+  font-family: var(--v2-font-mono);
+  font-size: 0.76rem;
+  color: var(--v2-text-dim);
+}
+
+/* ── 登录 / 注册 ── */
+body.ui-v2 .auth-container {
+  animation: v2-fade-in-up var(--v2-duration-slow) var(--v2-ease) both;
+}
+body.ui-v2 .auth-card {
+  border-radius: var(--v2-radius);
+  box-shadow: var(--v2-shadow-lg);
+}
+body.ui-v2 .auth-title {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+body.ui-v2 .auth-hint {
+  color: var(--v2-text-muted);
+  font-size: 0.85rem;
+}
+body.ui-v2 .auth-back {
+  color: var(--v2-text-dim);
+  transition: color var(--v2-duration) var(--v2-ease),
+              transform var(--v2-duration) var(--v2-ease);
+  display: inline-block;
+}
+body.ui-v2 .auth-back:hover {
+  color: var(--v2-accent);
+  transform: translateX(-3px);
+}
+body.ui-v2 .auth-form input {
+  font-size: 16px; /* 防 iOS 聚焦缩放 */
+}
+
+/* ── 画廊（网格图片） ── */
+body.ui-v2 .gallery-grid img,
+body.ui-v2 .gallery-item img {
+  border-radius: var(--v2-radius-sm);
+  box-shadow: var(--v2-shadow-sm);
+  transition: transform var(--v2-duration) var(--v2-ease),
+              box-shadow var(--v2-duration) var(--v2-ease);
+}
+body.ui-v2 .gallery-item:hover img {
+  transform: scale(1.03);
+  box-shadow: var(--v2-shadow-lg);
+}
+
+/* ── 表格/内联表单 ── */
+body.ui-v2 .inline-form {
+  gap: 0.4rem;
+}
+body.ui-v2 .text-muted {
+  color: var(--v2-text-muted);
+}

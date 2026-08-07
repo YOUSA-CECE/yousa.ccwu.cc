@@ -1,0 +1,551 @@
+{% extends "base.html" %}
+{% block title %}画廊 — yousa.ccwu.cc{% endblock %}
+{% block head %}
+<style>
+.gallery-shell { max-width: 1100px; margin: 0 auto; }
+.gallery-header { padding: 1.4rem 1.6rem; margin-bottom: 1.2rem;
+  display:flex;justify-content:space-between;align-items:center;gap:1rem; overflow:hidden;position:relative; }
+.gallery-header::after { content:"";position:absolute;width:180px;height:180px;right:-70px;top:-90px;
+  border-radius:50%;background:radial-gradient(circle,rgba(215,102,146,.22),transparent 68%);pointer-events:none; }
+.gallery-heading { position:relative;z-index:1; }
+.gallery-heading h1 { margin:0;font-size:clamp(1.5rem,4vw,2.15rem); }
+.gallery-actions { display:flex;gap:.6rem;align-items:center;position:relative;z-index:1; }
+.gallery-upload-toggle { display:inline-flex;align-items:center;justify-content:center;gap:.35rem;min-height:42px;
+  padding:.55rem 1rem;border:0;border-radius:999px;background:linear-gradient(135deg,var(--accent),#c782ab);
+  color:#fff;font:600 .86rem inherit;box-shadow:0 8px 20px rgba(215,102,146,.22);cursor:pointer; }
+.gallery-login-link { color:var(--accent-2);font-size:.85rem;text-decoration:none; }
+.gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; }
+.gallery-item { overflow: hidden; border-radius: var(--radius); transition: transform 0.2s, box-shadow 0.2s;
+  cursor: pointer;position:relative; }
+.gallery-item:hover { transform: translateY(-3px); box-shadow: 0 8px 30px rgba(65,83,101,0.2); }
+.gallery-image-wrap { position:relative;overflow:hidden;background:rgba(255,255,255,.28); }
+.gallery-item img { width: 100%; height: 220px; object-fit: cover; display: block;transition:transform .35s ease; }
+.gallery-item:hover img { transform:scale(1.035); }
+.gallery-privacy { position:absolute;top:.55rem;right:.55rem;font-size:.7rem;background:rgba(34,40,49,.72);
+  color:#fff;padding:.2rem .45rem;border-radius:999px;backdrop-filter:blur(8px); }
+.gallery-caption { padding: 0.72rem 0.85rem 0.8rem; font-size: 0.85rem; }
+.gallery-caption .name { font-weight: 600; color: var(--text); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gallery-caption .notes { color: var(--text-muted); font-size: 0.78rem; margin-top: 0.15rem;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.gallery-caption .meta { color: var(--text-dim); font-size: 0.75rem; margin-top: 0.2rem; }
+.dir-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 0.6rem; margin-bottom: 1.5rem; }
+.dir-item { padding: 0.8rem 1rem; border-radius: var(--radius-sm); display: flex; align-items: center; gap: 0.5rem; font-weight: 500; }
+.gallery-empty { text-align: center; padding: 3rem 1rem; color: var(--text-muted); }
+.breadcrumb { padding: 0.6rem 1.2rem; margin-bottom: 1rem; border-radius: var(--radius-sm); font-size: 0.9rem; }
+.breadcrumb a { color: var(--accent-2); }
+.breadcrumb-sep { margin: 0 0.4rem; color: var(--text-dim); }
+
+/* Upload form */
+.upload-form { padding: 1.2rem 1.5rem; margin-bottom: 1.2rem; display: none; }
+.upload-form.open { display: block; }
+.upload-drop-zone { border:2px dashed var(--border-dark);border-radius:var(--radius);padding:1.35rem;
+  text-align:center;margin-bottom:.8rem;cursor:pointer;background:rgba(255,255,255,.2);transition:.2s ease; }
+.upload-drop-zone:hover { border-color:var(--accent);background:rgba(255,255,255,.34); }
+.upload-drop-icon { display:block;font-size:1.6rem;margin-bottom:.3rem; }
+.upload-form label { display: block; font-size: 0.85rem; color: var(--text); margin-bottom: 0.2rem; margin-top: 0.6rem; }
+.upload-form label:first-of-type { margin-top: 0; }
+.upload-form input, .upload-form textarea { width:100%; padding:0.5rem 0.8rem; border:1px solid var(--border-dark);
+  border-radius:var(--radius-sm); background:rgba(255,255,255,0.5); font-size:0.9rem; font-family:inherit;
+  box-sizing:border-box; }
+.upload-form textarea { resize:vertical; min-height:60px; }
+.upload-form input[type=file] { position:absolute;opacity:0;width:1px;height:1px;pointer-events:none; }
+.upload-visibility { display:flex;gap:.55rem;margin-top:.3rem; }
+.upload-visibility label { flex:1;display:flex;align-items:center;justify-content:center;gap:.35rem;
+  margin:0;padding:.55rem .65rem;border:1px solid var(--border);border-radius:999px;
+  background:rgba(255,255,255,.28);font-size:.8rem;cursor:pointer; }
+.upload-visibility input[type=radio] { width:auto;margin:0;padding:0;accent-color:var(--accent); }
+.gallery-submit { background:linear-gradient(135deg,var(--accent),#c782ab) !important;color:#fff !important;border:0 !important; }
+/* Album preview grid */
+.album-preview-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:.5rem;
+  margin:.6rem 0;max-height:320px;overflow-y:auto;padding:.3rem 0; }
+.album-preview-item { position:relative;border-radius:var(--radius-sm);overflow:hidden;
+  background:rgba(255,255,255,.25);aspect-ratio:1; }
+.album-preview-item img { width:100%;height:100%;object-fit:cover;display:block; }
+.album-preview-item .badge { position:absolute;bottom:0;left:0;right:0;
+  background:linear-gradient(transparent,rgba(0,0,0,.6));padding:.5rem .4rem .35rem;
+  font-size:.7rem;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+.album-preview-count { font-size:.78rem;color:var(--text-muted);margin-top:.3rem;text-align:center; }
+.album-field-row { display:flex;gap:.6rem;align-items:center; }
+.album-field-row input { flex:1; }
+
+/* Lightbox */
+.lightbox { display: none; position: fixed; z-index: 9999; left:0; top:0; width:100%; height:100%;
+  background: rgba(0,0,0,0.88); backdrop-filter: blur(6px); justify-content:center; align-items:center; flex-direction:column; }
+.lightbox.active { display: flex; }
+.lightbox-img { max-width: 92vw; max-height: 78vh; object-fit: contain; border-radius: 4px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.5); }
+.lightbox-close { position: fixed; top: 1rem; right: 1.5rem; font-size: 2rem; color: #fff;
+  cursor: pointer; opacity: 0.7; transition: opacity 0.2s; background: none; border: none; z-index: 10000; }
+.lightbox-close:hover { opacity: 1; }
+.lightbox-nav { position: fixed; top: 50%; transform: translateY(-50%); font-size: 2.5rem;
+  color: #fff; cursor: pointer; opacity: 0.5; transition: opacity 0.2s; background: none; border: none;
+  padding: 0.5rem 1rem; z-index: 10000; }
+.lightbox-nav:hover { opacity: 1; }
+.lightbox-prev { left: 1rem; }
+.lightbox-next { right: 1rem; }
+.lightbox-info { position: fixed; bottom: 0; left: 0; right: 0; padding: 1rem 2rem;
+  background: linear-gradient(transparent, rgba(0,0,0,0.7)); display: flex; justify-content: space-between; align-items: center; }
+.lightbox-info span { color: #ddd; font-size: 0.85rem; }
+.lightbox-info .lb-notes { color: #bbb; font-size: 0.8rem; margin-top: 0.15rem; }
+.lightbox-info a { color: #fff; background: rgba(255,255,255,0.15); padding: 0.3rem 0.8rem;
+  border-radius: 999px; text-decoration: none; font-size: 0.8rem; transition: background 0.2s; }
+.lightbox-info a:hover { background: rgba(255,255,255,0.25); }
+@media (max-width: 640px) {
+  .gallery-shell { padding-bottom:calc(1rem + env(safe-area-inset-bottom)); }
+  .gallery-header { padding:1rem;margin-bottom:.85rem;border-radius:18px;align-items:flex-start; }
+  .gallery-heading p { font-size:.8rem; }
+  .gallery-actions { margin-top:.1rem; }
+  .gallery-upload-toggle { min-height:40px;padding:.5rem .8rem;font-size:.8rem;white-space:nowrap; }
+  .gallery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap:.65rem; }
+  .gallery-item { border-radius:15px; }
+  .gallery-item img { height: 168px; }
+  .gallery-caption { padding:.55rem .62rem .65rem; }
+  .gallery-caption .name { font-size:.82rem; }
+  .gallery-caption .notes { -webkit-line-clamp:1;font-size:.72rem; }
+  .gallery-caption .meta { font-size:.68rem; }
+  .upload-form { padding:.9rem;margin-bottom:.85rem;border-radius:18px; }
+  .upload-drop-zone { padding:1.15rem .7rem; }
+  .upload-form input,.upload-form textarea { font-size:16px; }
+  .dir-grid { grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem; }
+  .dir-item { padding:.72rem;border-radius:14px;font-size:.84rem; }
+  .lightbox-img { max-width: 98vw; max-height: 70vh; }
+  .lightbox-comments {
+    left: 0 !important;
+    right: 0 !important;
+    top: auto !important;
+    bottom: 0 !important;
+    width: auto !important;
+    height: auto !important;
+    max-height: min(56dvh, 460px) !important;
+    box-sizing: border-box;
+    border-radius: 18px 18px 0 0;
+    padding: 0.9rem 1rem calc(0.9rem + env(safe-area-inset-bottom)) !important;
+    overscroll-behavior: contain;
+  }
+  .lightbox-comments #comments-list {
+    max-height: 25dvh;
+    overflow-y: auto;
+  }
+}
+</style>
+{% endblock %}
+{% block content %}
+<section class="gallery-shell" id="gallery-shell"
+    ondragover="event.preventDefault();if(canUpload){document.getElementById('drop-zone').style.borderColor='var(--accent)';document.getElementById('upload-form').classList.add('open');}"
+    ondragleave="event.preventDefault();document.getElementById('drop-zone').style.borderColor='var(--border-dark)'"
+    ondrop="if(canUpload){event.preventDefault();var f=event.dataTransfer.files[0];if(f&&f.type.match('image.*')){document.getElementById('upload-file').files=event.dataTransfer.files;document.getElementById('upload-form').classList.add('open');document.getElementById('gallery-confirm-btn').style.display='inline-block';}}">
+    <div class="gallery-header glass-panel">
+        <div class="gallery-heading">
+            <h1>🖼️ 画廊</h1>
+            <p class="page-desc" style="margin:.25rem 0 0">收藏此刻，也分享眼中的世界</p>
+        </div>
+        <div class="gallery-actions">
+            {% if current_user.is_authenticated %}
+            <button class="gallery-upload-toggle" type="button" onclick="toggleUploadForm()">＋ 上传照片</button>
+            {% else %}
+            <a class="gallery-login-link" href="/login">登录后上传</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Upload form -->
+    {% if current_user.is_authenticated %}
+    <div class="upload-form glass-panel" id="upload-form">
+        <div class="upload-drop-zone" id="drop-zone"
+             ondragover="event.preventDefault();this.style.borderColor='var(--accent)'"
+             ondragleave="this.style.borderColor='var(--border-dark)'"
+             ondrop="handleDrop(event)">
+            <span class="upload-drop-icon">🌸</span>
+            <strong style="display:block;color:var(--text);font-size:.9rem">选择多张照片或拖拽到此处</strong>
+            <p style="margin:.25rem 0 0;color:var(--text-muted);font-size:.78rem">支持 JPG、PNG、GIF、WebP，可一次上传整个图集</p>
+        </div>
+        <input type="file" id="upload-file" accept="image/png,image/jpeg,image/gif,image/webp" multiple
+               onchange="handleFileSelect(this.files)">
+        <div class="album-preview-grid" id="album-preview"></div>
+        <div class="album-preview-count" id="album-count"></div>
+        <div class="album-field-row">
+            <input type="text" id="upload-album" placeholder="图集名称（选填，创建文件夹）" style="flex:1">
+        </div>
+        <label>标题</label>
+        <input type="text" id="upload-title" placeholder="图片标题（选填，不填则用文件名）">
+        <label>备注</label>
+        <textarea id="upload-notes" placeholder="添加备注描述…（用于所有图片）"></textarea>
+        <label style="margin-top:0.5rem">谁可以看</label>
+        <div class="upload-visibility">
+            <label>
+                <input type="radio" name="visibility" value="public" checked> 🌍 所有人
+            </label>
+            <label>
+                <input type="radio" name="visibility" value="private"> 🔒 仅自己
+            </label>
+        </div>
+        <button class="form-btn form-btn-sm gallery-submit" type="button" id="gallery-confirm-btn" style="margin-top:0.7rem;display:none" onclick="uploadAlbum()">确认上传</button>
+        <div id="upload-status" style="margin-top:0.4rem;font-size:0.82rem;color:var(--text-muted)"></div>
+        <div id="upload-progress" style="display:none;margin-top:0.6rem">
+            <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.2rem" id="upload-progress-text">准备中…</div>
+            <div style="background:var(--border-dark);border-radius:999px;height:6px;overflow:hidden">
+                <div id="upload-progress-bar" style="background:var(--accent);height:100%;width:0%;border-radius:999px;transition:width 0.3s"></div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if current_path %}
+    <nav class="breadcrumb glass-panel">
+        <a href="/gallery/">🏠 根目录</a>
+        {% for crumb in breadcrumbs %}
+        <span class="breadcrumb-sep">/</span>
+        <a href="/gallery/{{ crumb.path }}">{{ crumb.name }}</a>
+        {% endfor %}
+    </nav>
+    {% endif %}
+
+    {% if dirs %}
+    <div class="dir-grid">
+        {% for d in dirs %}
+        <a href="/gallery/{{ d.path }}" class="dir-item glass-panel">
+            <span>📁</span>
+            <span>{{ d.name }}</span>
+        </a>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if images %}
+    <div class="gallery-grid" id="gallery-grid">
+        {% for img in images %}
+        {% set meta = upload_meta.get(img.path, {}) %}
+        <div class="gallery-item glass-panel" data-index="{{ loop.index0 }}"
+             data-path="{{ img.path }}" data-name="{{ img.name }}"
+             data-size="{{ img.size_hr }}" data-date="{{ img.modified }}"
+             data-title="{{ meta.get('title', '') }}"
+             data-notes="{{ meta.get('notes', '') }}"
+             data-uploader="{{ meta.get('uploaded_by', '') }}"
+             data-uploadtime="{{ meta.get('created_at', '') }}"
+             onclick="openLightbox({{ loop.index0 }})">
+            <div class="gallery-image-wrap">
+                <img src="/gallery/thumb/{{ img.path }}" alt="{{ img.name }}" loading="lazy"
+                     onerror="this.src='/gallery/{{ img.path }}';this.onerror=null">
+                {% if meta.get('visibility') == 'private' %}
+                <span class="gallery-privacy">🔒 私密</span>
+                {% endif %}
+            </div>
+            <div class="gallery-caption">
+                <span class="name">{{ meta.get('title') or img.name }}</span>
+                {% if meta.get('notes') %}
+                <span class="notes">{{ meta.get('notes') }}</span>
+                {% endif %}
+                <span class="meta">{{ img.size_hr }} · {{ img.modified }}</span>
+                {% if meta.get('uploaded_by') %}
+                <span class="meta">👤 {{ meta.get('uploaded_by') }} · 🕐 {{ meta.get('created_at')[:16] }}</span>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% elif not dirs %}
+    <div class="gallery-empty glass-panel" id="gallery-empty">
+        <p>📭 暂无图片</p>
+        {% if current_user.is_authenticated %}
+        <p style="font-size:0.85rem;color:var(--text-dim);margin-top:0.5rem">点击上方“上传照片”，留下第一张影像</p>
+        {% endif %}
+    </div>
+    {% endif %}
+</section>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox" role="dialog" aria-label="图片预览">
+    <button class="lightbox-close" onclick="closeLightbox()" aria-label="关闭预览">✕</button>
+    <button class="lightbox-nav lightbox-prev" onclick="prevImage()" aria-label="上一张">‹</button>
+    <button class="lightbox-nav lightbox-next" onclick="nextImage()" aria-label="下一张">›</button>
+    <img class="lightbox-img" id="lightbox-img" src="" alt="">
+    <div class="lightbox-info" id="lightbox-info">
+        <div>
+            <span id="lightbox-title"></span>
+            <div class="lb-notes" id="lightbox-notes"></div>
+            <span id="lightbox-meta" style="font-size:0.75rem;color:#999"></span>
+        </div>
+        <div style="display:flex;gap:0.5rem;align-items:center">
+            <button class="form-btn form-btn-sm" onclick="toggleComments()" style="background:rgba(255,255,255,0.15);color:#fff">💬 评论</button>
+            <a id="lightbox-download" href="#" download style="color:#fff;background:rgba(255,255,255,0.15);padding:0.3rem 0.8rem;border-radius:999px;text-decoration:none;font-size:0.8rem">⬇ 下载</a>
+        </div>
+    </div>
+    <!-- Comments panel -->
+    <div class="lightbox-comments" id="lightbox-comments" style="display:none;position:fixed;right:0;top:0;bottom:0;width:340px;background:rgba(34,40,49,0.95);backdrop-filter:blur(10px);overflow-y:auto;z-index:10001;padding:1rem">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.8rem">
+            <h3 style="color:#fff;margin:0;font-size:1rem">💬 评论</h3>
+            <button onclick="toggleComments()" style="background:none;border:none;color:#fff;font-size:1.2rem;cursor:pointer">✕</button>
+        </div>
+        <div id="comments-list" style="margin-bottom:1rem;color:#ccc;font-size:0.85rem"></div>
+        <form id="comment-form" onsubmit="return postComment(event)" style="border-top:1px solid rgba(255,255,255,0.1);padding-top:0.8rem">
+            {% if not current_user.is_authenticated %}
+            <input type="text" id="comment-name" placeholder="昵称" style="width:100%;margin-bottom:0.4rem;padding:0.4rem 0.6rem;border:1px solid rgba(255,255,255,0.2);border-radius:4px;background:rgba(255,255,255,0.08);color:#fff;font-size:0.82rem;box-sizing:border-box">
+            {% endif %}
+            <textarea id="comment-text" rows="2" placeholder="写评论…" required style="width:100%;padding:0.4rem 0.6rem;border:1px solid rgba(255,255,255,0.2);border-radius:4px;background:rgba(255,255,255,0.08);color:#fff;font-size:0.82rem;resize:none;box-sizing:border-box;font-family:inherit"></textarea>
+            <button type="submit" style="margin-top:0.4rem;background:var(--accent);color:#fff;border:none;border-radius:999px;padding:0.3rem 0.8rem;font-size:0.8rem;cursor:pointer">发送</button>
+        </form>
+    </div>
+</div>
+
+<script>
+(function() {
+    var items = document.querySelectorAll('#gallery-grid .gallery-item');
+    var galleryData = [];
+    items.forEach(function(el) {
+        galleryData.push({
+            path: el.dataset.path,
+            name: el.dataset.name,
+            size: el.dataset.size,
+            date: el.dataset.date,
+            title: el.dataset.title,
+            notes: el.dataset.notes,
+            uploader: el.dataset.uploader,
+            uploadtime: el.dataset.uploadtime
+        });
+    });
+
+    var lb = document.getElementById('lightbox');
+    var lbImg = document.getElementById('lightbox-img');
+    var lbTitle = document.getElementById('lightbox-title');
+    var lbNotes = document.getElementById('lightbox-notes');
+    var lbMeta = document.getElementById('lightbox-meta');
+    var lbDownload = document.getElementById('lightbox-download');
+    var currentIdx = -1;
+
+    window.openLightbox = function(idx) {
+        if (idx < 0 || idx >= galleryData.length) return;
+        currentIdx = idx;
+        var d = galleryData[idx];
+        lbImg.src = '/gallery/' + d.path;
+        lbTitle.textContent = d.title || d.name;
+        lbNotes.textContent = d.notes || '';
+        lbMeta.textContent = d.size + ' · ' + d.date;
+        if (d.uploader) {
+            lbMeta.textContent += ' · 👤 ' + d.uploader + ' 🕐 ' + d.uploadtime.substring(0, 16);
+        }
+        lbDownload.href = '/gallery/' + d.path;
+        lbDownload.setAttribute('download', d.name);
+        lb.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    };
+
+    window.closeLightbox = function() {
+        lb.classList.remove('active');
+        document.body.style.overflow = '';
+    };
+
+    window.prevImage = function() { if (currentIdx > 0) openLightbox(currentIdx - 1); };
+    window.nextImage = function() { if (currentIdx < galleryData.length - 1) openLightbox(currentIdx + 1); };
+
+    document.addEventListener('keydown', function(e) {
+        if (!lb.classList.contains('active')) return;
+        if (e.key === 'Escape') closeLightbox();
+        if (e.key === 'ArrowLeft') prevImage();
+        if (e.key === 'ArrowRight') nextImage();
+    });
+
+    lb.addEventListener('click', function(e) { if (e.target === lb) closeLightbox(); });
+})();
+
+var canUpload = {{ 'true' if current_user.is_authenticated else 'false' }};
+var pendingFiles = [];
+
+function toggleUploadForm() {
+    var form = document.getElementById('upload-form');
+    form.classList.toggle('open');
+    if (!form.classList.contains('open')) {
+        pendingFiles = [];
+        document.getElementById('album-preview').innerHTML = '';
+        document.getElementById('album-count').textContent = '';
+        document.getElementById('gallery-confirm-btn').style.display = 'none';
+    }
+}
+
+// Make drop zone clickable — use label for hidden input to avoid double-trigger
+var dropZone = document.getElementById('drop-zone');
+if (dropZone) {
+    dropZone.addEventListener('click', function(e) {
+        if (e.target === dropZone || e.target.closest('.upload-drop-zone')) {
+            document.getElementById('upload-file').click();
+        }
+    });
+}
+
+function handleFileSelect(files) {
+    if (!files || !files.length) return;
+    pendingFiles = Array.prototype.slice.call(files);
+    renderAlbumPreview();
+    document.getElementById('gallery-confirm-btn').style.display = 'inline-block';
+}
+
+function renderAlbumPreview() {
+    var grid = document.getElementById('album-preview');
+    var count = document.getElementById('album-count');
+    grid.innerHTML = '';
+    count.textContent = '已选择 ' + pendingFiles.length + ' 张图片';
+    pendingFiles.forEach(function(file, idx) {
+        var item = document.createElement('div');
+        item.className = 'album-preview-item';
+        var img = document.createElement('img');
+        img.src = URL.createObjectURL(file);
+        img.alt = file.name;
+        var badge = document.createElement('div');
+        badge.className = 'badge';
+        badge.textContent = file.name.length > 18 ? file.name.slice(0, 16) + '…' : file.name;
+        item.appendChild(img);
+        item.appendChild(badge);
+        grid.appendChild(item);
+    });
+}
+
+function handleDrop(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    var zone = document.getElementById('drop-zone');
+    zone.style.borderColor = 'var(--border-dark)';
+    var files = e.dataTransfer.files;
+    if (!files || !files.length) return;
+    // Filter only images
+    var imageFiles = Array.prototype.slice.call(files).filter(function(f) {
+        return f.type.match('image.*');
+    });
+    if (!imageFiles.length) {
+        document.getElementById('upload-status').textContent = '❌ 请拖入图片文件';
+        return;
+    }
+    pendingFiles = imageFiles;
+    renderAlbumPreview();
+    document.getElementById('gallery-confirm-btn').style.display = 'inline-block';
+}
+
+async function uploadAlbum() {
+    if (!pendingFiles || !pendingFiles.length) {
+        document.getElementById('upload-status').textContent = '❌ 请选择图片';
+        return;
+    }
+
+    var btn = document.getElementById('gallery-confirm-btn');
+    btn.disabled = true;
+    btn.textContent = '⏳ 上传中…';
+
+    var total = pendingFiles.length;
+    var completed = 0;
+    var errors = [];
+    var album = document.getElementById('upload-album').value.trim();
+    var title = document.getElementById('upload-title').value.trim();
+    var notes = document.getElementById('upload-notes').value.trim();
+    var visibility = document.querySelector('input[name=visibility]:checked').value;
+
+    var progressEl = document.getElementById('upload-progress');
+    var progressText = document.getElementById('upload-progress-text');
+    var progressBar = document.getElementById('upload-progress-bar');
+    var statusEl = document.getElementById('upload-status');
+    progressEl.style.display = 'block';
+
+    // Upload files sequentially with progress
+    for (var i = 0; i < total; i++) {
+        var file = pendingFiles[i];
+        progressText.textContent = '[' + (i + 1) + '/' + total + '] ' + file.name;
+        progressBar.style.width = Math.round(completed / total * 100) + '%';
+
+        var fd = new FormData();
+        fd.append('files[]', file);
+        fd.append('album', album);
+        fd.append('title', title);
+        fd.append('notes', notes);
+        fd.append('visibility', visibility);
+
+        try {
+            var resp = await fetch('/gallery/upload', { method: 'POST', body: fd });
+            var data = await resp.json();
+            if (data.status === 'ok') {
+                completed++;
+                statusEl.textContent = '✅ ' + completed + '/' + total + ' 完成';
+            } else {
+                errors.push(file.name + ': ' + (data.error || '失败'));
+                statusEl.textContent = '⚠️ ' + (completed + errors.length) + '/' + total + '（' + errors.length + ' 个错误）';
+            }
+        } catch (err) {
+            errors.push(file.name + ': 网络错误');
+            statusEl.textContent = '⚠️ ' + (completed + errors.length) + '/' + total + '（网络错误）';
+        }
+        progressBar.style.width = Math.round((i + 1) / total * 100) + '%';
+    }
+
+    progressEl.style.display = 'none';
+    btn.disabled = false;
+
+    if (completed === total) {
+        statusEl.innerHTML = '✅ 全部上传成功！<a href=\"/gallery/\" style=\"color:var(--accent)\">刷新查看</a>';
+        document.getElementById('upload-file').value = '';
+        document.getElementById('upload-album').value = '';
+        document.getElementById('upload-title').value = '';
+        document.getElementById('upload-notes').value = '';
+        pendingFiles = [];
+        document.getElementById('album-preview').innerHTML = '';
+        document.getElementById('album-count').textContent = '';
+        btn.style.display = 'none';
+    } else if (completed > 0) {
+        statusEl.innerHTML = '⚠️ 部分成功（' + completed + '/' + total + '），<a href=\"/gallery/\" style=\"color:var(--accent)\">刷新查看</a>';
+        if (errors.length) statusEl.innerHTML += '<br><span style="font-size:.75rem;color:#e74c3c">错误：' + errors.join('; ') + '</span>';
+    } else {
+        statusEl.textContent = '❌ ' + (errors[0] || '上传失败');
+        btn.textContent = '确认上传';
+    }
+}
+
+var currentCommentTarget = '';
+
+function toggleComments() {
+    var panel = document.getElementById('lightbox-comments');
+    if (panel.style.display === 'block') { panel.style.display = 'none'; return; }
+    panel.style.display = 'block';
+    if (currentIdx >= 0 && galleryData[currentIdx]) {
+        currentCommentTarget = galleryData[currentIdx].path;
+        loadComments('gallery', currentCommentTarget);
+    }
+}
+
+function loadComments(type, id) {
+    fetch('/api/comment/' + type + '/' + encodeURIComponent(id))
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        var el = document.getElementById('comments-list');
+        if (!data.length) {
+            el.innerHTML = '<p style="color:#888;font-size:0.82rem">暂无评论</p>';
+            return;
+        }
+        el.innerHTML = data.map(function(c) {
+            return '<div style="margin-bottom:0.6rem;padding:0.4rem 0.6rem;background:rgba(255,255,255,0.06);border-radius:4px">'
+                + '<div style="display:flex;justify-content:space-between;font-size:0.75rem;margin-bottom:0.2rem">'
+                + '<strong>' + escapeHtml(c.author) + '</strong>'
+                + '<span style="color:#888">' + c.time + '</span></div>'
+                + '<p style="margin:0;font-size:0.85rem">' + escapeHtml(c.content) + '</p></div>';
+        }).join('');
+    });
+}
+
+function escapeHtml(t) { return String(t).replace(/[&<>"]/g,function(ch){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[ch];}); }
+
+function postComment(e) {
+    e.preventDefault();
+    var text = document.getElementById('comment-text');
+    if (!text.value.trim()) return;
+    var formData = new FormData();
+    formData.append('content', text.value.trim());
+    var nameInput = document.getElementById('comment-name');
+    if (nameInput) formData.append('name', nameInput.value.trim() || '游客');
+
+    fetch('/api/comment/gallery/' + encodeURIComponent(currentCommentTarget), {
+        method: 'POST', body: formData
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.status === 'ok') {
+            text.value = '';
+            loadComments('gallery', currentCommentTarget);
+        }
+    });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}对话详情 #{{ log.id }} — 管理后台{% endblock %}
+{% block head %}
+<style>
+.detail-wrap { max-width: 800px; margin: 0 auto; padding: 2rem 1rem; }
+.detail-header { margin-bottom: 1.5rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; }
+.detail-meta { font-size:0.85rem; color:var(--text-muted); margin-bottom: 2rem; padding:1rem; }
+.detail-meta span { margin-right: 1.5rem; }
+.chat-pair { margin-bottom: 1.5rem; }
+.msg-block { padding:1rem; border-radius:var(--radius-md); margin-bottom: 1rem; white-space:pre-wrap; word-break:break-word; line-height:1.6; }
+.msg-user { background:rgba(0,212,164,0.08); border-left: 3px solid var(--accent); }
+.msg-ai { background:rgba(94,158,188,0.08); border-left: 3px solid var(--accent-2); }
+.msg-label { font-size:0.8rem; font-weight:600; margin-bottom: 0.3rem; }
+.msg-user .msg-label { color:var(--accent); }
+.msg-ai .msg-label { color:var(--accent-2); }
+.btn-bar { display:flex; gap:0.5rem; margin-top: 1rem; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="detail-wrap">
+    <div class="detail-header">
+        <h1>💬 对话详情 #{{ log.id }}</h1>
+        <a href="/admin/chat-logs" class="form-btn form-btn-sm">← 返回列表</a>
+    </div>
+
+    <div class="detail-meta glass-panel">
+        <span>👤 <strong>{{ log.username }}</strong></span>
+        <span>📡 {{ log.ip_address }}</span>
+        <span>🕐 {{ log.created_at[:19] }}</span>
+    </div>
+
+    <div class="chat-pair">
+        <div class="msg-block msg-user">
+            <div class="msg-label">👤 用户</div>
+            {{ log.user_message }}
+        </div>
+        <div class="msg-block msg-ai">
+            <div class="msg-label">🐕 欢欢</div>
+            {{ log.ai_reply }}
+        </div>
+    </div>
+
+    <div class="btn-bar">
+        <a href="/admin/chat-logs" class="form-btn">← 返回列表</a>
+        <form method="post" action="/admin/chat-logs/{{ log.id }}/delete" style="display:inline"
+              onsubmit="return confirm('删除这条记录？')">
+            <button type="submit" class="btn-danger" style="padding:0.4rem 0.8rem;font-size:0.85rem">🗑️ 删除</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

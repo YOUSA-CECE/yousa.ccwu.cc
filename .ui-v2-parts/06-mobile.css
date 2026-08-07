@@ -1,0 +1,304 @@
+
+/* ═══════════ 移动端适配（沿用 v1 断点 900 / 640）═══════════ */
+
+/* ── ≤900px 平板 ── */
+@media (max-width: 900px) {
+  body.ui-v2 .home-shell {
+    grid-template-columns: 1fr;
+    gap: 1.1rem;
+  }
+  body.ui-v2 .profile-card {
+    position: static;
+  }
+  body.ui-v2 .hero {
+    padding: 1.6rem 1.4rem;
+  }
+  body.ui-v2 .hero-title {
+    font-size: clamp(1.5rem, 4.6vw, 2rem);
+  }
+  body.ui-v2 .feature-grid,
+  body.ui-v2 .card-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  }
+  body.ui-v2 .activity-grid {
+    grid-template-columns: 1fr;
+  }
+  body.ui-v2 .wiki-layout {
+    grid-template-columns: 1fr;
+  }
+  body.ui-v2 .wiki-sidebar {
+    position: static;
+    max-height: 16rem;
+    overflow-y: auto;
+  }
+}
+
+/* ── ≤640px 手机 ── */
+@media (max-width: 640px) {
+  body.ui-v2 {
+    font-size: 14.5px;
+  }
+
+  /* 导航：横向滚动，隐藏滚动条 */
+  body.ui-v2 .nav-inner {
+    padding: 0.5rem 0.85rem;
+    gap: 0.5rem;
+  }
+  body.ui-v2 .nav-links {
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    gap: 0.1rem;
+    flex-wrap: nowrap;
+  }
+  body.ui-v2 .nav-links::-webkit-scrollbar {
+    display: none;
+  }
+  body.ui-v2 .nav-link {
+    white-space: nowrap;
+    padding: 0.5rem 0.6rem;
+    font-size: 0.82rem;
+    min-height: 44px;            /* 触控目标 */
+    display: inline-flex;
+    align-items: center;
+  }
+  body.ui-v2 .nav-link::after {
+    display: none;               /* 手机上去掉下划线滑动，避免抖动 */
+  }
+  body.ui-v2 .nav-search {
+    display: none;               /* 手机用顶部独立搜索框 */
+  }
+  body.ui-v2 .mobile-top-search input {
+    font-size: 16px;             /* 防 iOS 聚焦缩放 */
+    min-height: 40px;
+    border-radius: 999px;
+  }
+  body.ui-v2 .brand-text {
+    font-size: 0.9rem;
+  }
+  body.ui-v2 .brand-mark {
+    width: 28px;
+    height: 28px;
+    font-size: 0.95rem;
+  }
+
+  /* 主体间距收紧 */
+  body.ui-v2 .main-content {
+    padding: 1rem 0.85rem calc(1.4rem + var(--sab, 0px));
+  }
+  body.ui-v2 .hero {
+    padding: 1.3rem 1.1rem;
+  }
+  body.ui-v2 .hero-title {
+    font-size: clamp(1.35rem, 6.2vw, 1.75rem);
+  }
+  body.ui-v2 .hero-sub {
+    font-size: 0.88rem;
+  }
+  body.ui-v2 .hero-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  body.ui-v2 .btn-primary,
+  body.ui-v2 .btn-secondary,
+  body.ui-v2 .form-btn {
+    min-height: 44px;            /* 触控目标 */
+    justify-content: center;
+    width: 100%;
+  }
+  body.ui-v2 .form-btn-sm {
+    width: auto;
+    min-height: 36px;
+  }
+
+  /* 卡片单列 */
+  body.ui-v2 .feature-grid,
+  body.ui-v2 .card-grid,
+  body.ui-v2 .tool-grid {
+    grid-template-columns: 1fr;
+    gap: 0.8rem;
+  }
+  body.ui-v2 .feature-card,
+  body.ui-v2 .card {
+    padding: 1.1rem;
+  }
+  /* 手机上不做抬升，改用按压反馈 */
+  body.ui-v2 .feature-card:hover,
+  body.ui-v2 .card:hover {
+    transform: none;
+  }
+  body.ui-v2 .feature-card:active,
+  body.ui-v2 .card:active {
+    transform: scale(0.985);
+  }
+  body.ui-v2 .feature-card:hover::before,
+  body.ui-v2 .card:hover::before {
+    opacity: 0;
+  }
+
+  /* 个人卡 */
+  body.ui-v2 .profile-card {
+    padding-bottom: 1.1rem;
+  }
+  body.ui-v2 .profile-cover {
+    height: 66px;
+  }
+  body.ui-v2 .profile-avatar {
+    width: 60px;
+    height: 60px;
+    font-size: 1.5rem;
+    margin-top: -30px;
+  }
+  body.ui-v2 .profile-name {
+    font-size: 1.25rem;
+  }
+  body.ui-v2 .profile-stats {
+    gap: 0.4rem;
+  }
+  body.ui-v2 .profile-stats > div {
+    padding: 0.5rem 0.3rem;
+  }
+
+  /* 动态区 */
+  body.ui-v2 .activity-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.6rem;
+  }
+  body.ui-v2 .activity-item:hover {
+    transform: none;
+  }
+  body.ui-v2 .activity-item:active {
+    transform: scale(0.99);
+  }
+
+  /* 表格横向滚动 */
+  body.ui-v2 .admin-table-wrap {
+    overflow-x: auto;
+  }
+  body.ui-v2 .admin-table,
+  body.ui-v2 .admin-user-table {
+    min-width: 34rem;
+    font-size: 0.8rem;
+  }
+
+  /* 文件列表 */
+  body.ui-v2 .file-item {
+    min-height: 44px;
+  }
+  body.ui-v2 .file-item:hover {
+    transform: none;
+  }
+  body.ui-v2 .file-item:active {
+    background: rgba(196, 90, 130, 0.06);
+  }
+
+  /* 小狗浮窗：不挡内容，面板贴边全宽 */
+  body.ui-v2 .dog-chat {
+    right: calc(0.7rem + var(--sar, 0px));
+    bottom: calc(0.7rem + var(--sab, 0px));
+  }
+  body.ui-v2 .dog-chat-panel {
+    position: fixed;
+    left: calc(0.6rem + var(--sal, 0px));
+    right: calc(0.6rem + var(--sar, 0px));
+    bottom: calc(4.4rem + var(--sab, 0px));
+    width: auto;
+    max-height: 62vh;
+  }
+  body.ui-v2 .dog-chat-toggle:hover {
+    transform: none;
+  }
+  body.ui-v2 .dog-chat-toggle:active {
+    transform: scale(0.94);
+  }
+  body.ui-v2 .dog-chat-form textarea {
+    font-size: 16px;
+  }
+
+  /* 聊天页 */
+  body.ui-v2 .chat-container {
+    border-radius: var(--v2-radius-sm);
+  }
+  body.ui-v2 .chat-input-area textarea,
+  body.ui-v2 .chat-input-area input {
+    font-size: 16px;
+  }
+  body.ui-v2 .msg-bubble {
+    max-width: 86%;
+  }
+
+  /* 表单输入统一防缩放 */
+  body.ui-v2 .form-input,
+  body.ui-v2 input[type="text"],
+  body.ui-v2 input[type="search"],
+  body.ui-v2 input[type="password"],
+  body.ui-v2 input[type="email"],
+  body.ui-v2 textarea,
+  body.ui-v2 select {
+    font-size: 16px;
+  }
+
+  /* 内容页 */
+  body.ui-v2 .page-header {
+    padding: 1rem 1.1rem;
+  }
+  body.ui-v2 .wiki-content,
+  body.ui-v2 .markdown-body {
+    padding: 1rem 1.05rem;
+  }
+  body.ui-v2 .markdown-body pre {
+    border-radius: var(--v2-radius-xs);
+    font-size: 0.8rem;
+  }
+  body.ui-v2 .blog-card:hover,
+  body.ui-v2 .search-result-item:hover {
+    transform: none;
+  }
+  body.ui-v2 .blog-card:active,
+  body.ui-v2 .search-result-item:active {
+    transform: scale(0.99);
+  }
+
+  /* 页脚 */
+  body.ui-v2 .footer {
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    padding-bottom: calc(0.9rem + var(--sab, 0px));
+    font-size: 0.76rem;
+  }
+
+  /* aurora 在手机上降负载 */
+  body.ui-v2 .aurora {
+    filter: blur(28px);
+    opacity: 0.2;
+  }
+}
+
+/* ── 超窄屏 ≤380px ── */
+@media (max-width: 380px) {
+  body.ui-v2 .brand-text {
+    display: none;               /* 只留 Y 徽标，给搜索框腾空间 */
+  }
+  body.ui-v2 .profile-stats {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── 低端设备 / 省电：关掉大面积模糊 ── */
+@media (max-width: 640px) and (prefers-reduced-transparency: reduce) {
+  body.ui-v2 .glass-panel,
+  body.ui-v2 .card,
+  body.ui-v2 .navbar {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background: rgba(255, 255, 255, 0.93);
+  }
+}
+
+/* ── 横屏手机：小狗面板别顶满 ── */
+@media (max-height: 480px) and (orientation: landscape) {
+  body.ui-v2 .dog-chat-panel {
+    max-height: 76vh;
+  }
+}

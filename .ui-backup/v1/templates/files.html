@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}文件下载 — yousa.dev{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>📥 文件下载</h1>
+    <p class="page-desc">D:\DeepSeek 资料远程下载</p>
+</div>
+
+<nav class="breadcrumb">
+    <a href="/files/">📁 根目录</a>
+    {% for crumb in breadcrumbs %}
+    <span class="breadcrumb-sep">/</span>
+    <a href="/files/{{ crumb.path }}">{{ crumb.name }}</a>
+    {% endfor %}
+</nav>
+
+<div class="file-list">
+    {% if current_path %}
+    <div class="file-item file-up">
+        <a href="/files/{{ current_path.rsplit('/', 1)[0] if '/' in current_path else '' }}" class="file-link">
+            <span class="file-icon">📂</span>
+            <span class="file-name">..</span>
+        </a>
+    </div>
+    {% endif %}
+
+    {% for entry in entries %}
+    <div class="file-item">
+        {% if entry.is_dir %}
+        <a href="/files/{{ entry.path }}" class="file-link">
+            <span class="file-icon">📁</span>
+            <span class="file-name">{{ entry.name }}</span>
+            <span class="file-meta">{{ entry.modified }}</span>
+        </a>
+        {% else %}
+        <a href="/files/{{ entry.path }}" class="file-link" download>
+            <span class="file-icon">📄</span>
+            <span class="file-name">{{ entry.name }}</span>
+            <span class="file-meta">
+                {{ entry.size_hr }}
+                <span class="file-sep">·</span>
+                {{ entry.modified }}
+            </span>
+        </a>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+
+{% if not entries and not current_path %}
+<div class="empty-state">
+    <p>暂无文件可显示</p>
+</div>
+{% endif %}
+{% endblock %}

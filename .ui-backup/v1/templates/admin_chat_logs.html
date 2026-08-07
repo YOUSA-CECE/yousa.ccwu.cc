@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}AI 聊天记录 — 管理后台{% endblock %}
+{% block head %}
+<style>
+.logs-wrap { max-width: 1100px; margin: 0 auto; }
+.logs-header { padding: 1.5rem 2rem; margin-bottom: 1.5rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; }
+.logs-section { padding: 1.5rem; margin-bottom: 1.5rem; }
+.log-table { width:100%; border-collapse:collapse; font-size:0.85rem; }
+.log-table th { text-align:left; padding:0.5rem 0.4rem; border-bottom:1px solid var(--border-dark); color:var(--text-muted); font-weight:500; white-space:nowrap; }
+.log-table td { padding:0.4rem; border-bottom:1px solid var(--border-dark); vertical-align:middle; }
+.log-table tr:hover { background:rgba(255,255,255,0.15); }
+.log-table .msg-preview { max-width: 300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-color); }
+.log-table .user-badge { font-size:0.75rem; display:inline-block; padding:0.05rem 0.3rem; border-radius:3px; background:rgba(0,212,164,0.12); color:var(--accent); }
+.log-table .time-col { font-size:0.78rem; color:var(--text-muted); white-space:nowrap; }
+.pagination { display:flex; justify-content:center; gap:0.5rem; margin-top:1rem; flex-wrap:wrap; }
+.pagination a, .pagination span { padding:0.3rem 0.7rem; border-radius:var(--radius-sm); font-size:0.85rem; }
+.pagination .current { background:var(--accent); color:#fff; }
+.pagination a { background:rgba(255,255,255,0.08); }
+.pagination a:hover { background:rgba(255,255,255,0.15); }
+.search-bar { display:flex; gap:0.5rem; margin-bottom:1rem; }
+.search-bar input { flex:1; padding:0.4rem 0.6rem; border:1px solid var(--border-dark); border-radius:var(--radius-sm); background:rgba(255,255,255,0.5); }
+</style>
+{% endblock %}
+{% block content %}
+<section class="logs-wrap">
+    <div class="logs-header glass-panel">
+        <div>
+            <h1>💬 AI 聊天记录</h1>
+            <p class="page-desc" style="margin-top:0.2rem">欢欢与用户的对话日志 · 共 {{ total }} 条</p>
+        </div>
+        <div>
+            <a href="/admin" class="form-btn form-btn-sm">← 返回后台</a>
+        </div>
+    </div>
+
+    <div class="logs-section glass-panel">
+        <div class="search-bar">
+            <input type="text" id="search-input" placeholder="搜索对话内容..." oninput="filterLogs(this.value)">
+        </div>
+        <div style="overflow-x:auto">
+            <table class="log-table" id="log-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>用户</th>
+                        <th>消息</th>
+                        <th>回复（前60字）</th>
+                        <th>IP</th>
+                        <th>时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr class="log-row">
+                        <td>{{ log.id }}</td>
+                        <td><span class="user-badge">{{ log.username }}</span></td>
+                        <td class="msg-preview">{{ log.user_message[:60] }}{% if log.user_message|length > 60 %}...{% endif %}</td>
+                        <td class="msg-preview">{{ log.ai_reply[:60] }}{% if log.ai_reply|length > 60 %}...{% endif %}</td>
+                        <td style="font-size:0.78rem;color:var(--text-muted)">{{ log.ip_address }}</td>
+                        <td class="time-col">{{ log.created_at[:16] }}</td>
+                        <td>
+                            <a href="/admin/chat-logs/{{ log.id }}" class="form-btn form-btn-sm">详情</a>
+                            <form method="post" action="/admin/chat-logs/{{ log.id }}/delete" class="inline-form" style="display:inline"
+                                  onsubmit="return confirm('删除这条记录？')">
+                                <button type="submit" class="btn-danger" style="padding:0.2rem 0.4rem;font-size:0.75rem">删除</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% if logs|length == 0 %}
+                    <tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--text-muted)">暂无聊天记录</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if total > per_page %}
+        <div class="pagination">
+            {% set total_pages = (total // per_page) + (1 if total % per_page > 0 else 0) %}
+            {% if page > 1 %}
+            <a href="?page={{ page - 1 }}">← 上一页</a>
+            {% endif %}
+            <span class="current">{{ page }} / {{ total_pages }}</span>
+            {% if page < total_pages %}
+            <a href="?page={{ page + 1 }}">下一页 →</a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</section>
+
+<script>
+function filterLogs(val) {
+    const rows = document.querySelectorAll('.log-row');
+    const q = val.toLowerCase();
+    rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(q) ? '' : 'none';
+    });
+}
+</script>
+{% endblock %}
