@@ -494,7 +494,7 @@ def inject_user():
         asset_version = int((STATIC_DIR / "style.css").stat().st_mtime)
     except OSError:
         asset_version = 1
-    return dict(
+return dict(
         current_user=current_user,
         asset_version=asset_version,
         csrf_token=csrf_token(),

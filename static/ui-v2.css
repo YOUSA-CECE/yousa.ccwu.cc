@@ -1,0 +1,213 @@
+/* ===== ui-v2.css — 叠加层，不改 style.css 一个字节 =====
+   body.ui-v2 前缀防止特异性冲突，v1 恢复 ?ui=v1 即可。
+   ========================================================= */
+
+/* ── 设计令牌 ── */
+body.ui-v2 {
+  /* 色板 */
+  --v2-bg: #f0f2f5;
+  --v2-bg-deep: #e4e8ed;
+  --v2-panel: rgba(255, 255, 255, 0.72);
+  --v2-panel-strong: rgba(255, 255, 255, 0.88);
+  --v2-panel-dark: rgba(30, 35, 44, 0.78);
+  --v2-text: #1e2430;
+  --v2-text-muted: #5c6a7a;
+  --v2-text-dim: #8a96a4;
+  --v2-accent: #c45a82;
+  --v2-accent-2: #4f8faa;
+  --v2-accent-3: #c99f4a;
+  --v2-border: rgba(255, 255, 255, 0.7);
+  --v2-border-subtle: rgba(70, 85, 105, 0.12);
+  --v2-shadow-sm: 0 2px 8px rgba(55, 70, 88, 0.06);
+  --v2-shadow: 0 8px 32px rgba(55, 70, 88, 0.10);
+  --v2-shadow-lg: 0 20px 60px rgba(55, 70, 88, 0.14);
+  --v2-radius: 12px;
+  --v2-radius-sm: 8px;
+  --v2-radius-xs: 6px;
+  --v2-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --v2-ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --v2-duration: 0.25s;
+  --v2-duration-slow: 0.45s;
+  --v2-font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+  --v2-font-mono: "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
+
+  /* 覆盖 v1 变量给继承的组件用 */
+  --bg: var(--v2-bg);
+  --bg-deep: var(--v2-bg-deep);
+  --panel: var(--v2-panel);
+  --panel-strong: var(--v2-panel-strong);
+  --panel-dark: var(--v2-panel-dark);
+  --text: var(--v2-text);
+  --text-muted: var(--v2-text-muted);
+  --text-dim: var(--v2-text-dim);
+  --accent: var(--v2-accent);
+  --accent-2: var(--v2-accent-2);
+  --accent-3: var(--v2-accent-3);
+  --border: var(--v2-border);
+  --border-dark: var(--v2-border-subtle);
+  --shadow: var(--v2-shadow);
+  --radius: var(--v2-radius);
+  --radius-sm: var(--v2-radius-sm);
+  --font: var(--v2-font);
+}
+
+/* ── 全局排版 ── */
+body.ui-v2 {
+  font-family: var(--v2-font);
+  background:
+    radial-gradient(ellipse at 20% 10%, rgba(196, 90, 130, 0.20), transparent 32rem),
+    radial-gradient(ellipse at 80% 15%, rgba(79, 143, 170, 0.18), transparent 30rem),
+    radial-gradient(ellipse at 50% 80%, rgba(201, 159, 74, 0.10), transparent 28rem),
+    var(--v2-bg);
+  line-height: 1.7;
+  font-size: 15px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body.ui-v2::before {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.32) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.28) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.30), transparent 70%);
+}
+
+/* ── 选中文字 ── */
+body.ui-v2 ::selection {
+  background: rgba(196, 90, 130, 0.20);
+  color: var(--v2-text);
+}
+
+/* ── 滚动条 ── */
+body.ui-v2 ::-webkit-scrollbar-thumb {
+  background: rgba(90, 105, 120, 0.22);
+  border-radius: 999px;
+}
+body.ui-v2 ::-webkit-scrollbar-thumb:hover {
+  background: rgba(90, 105, 120, 0.34);
+}
+
+/* ── backdrop / aurora 调优 ── */
+body.ui-v2 .aurora {
+  filter: blur(40px);
+  opacity: 0.28;
+  transition: transform 6s var(--v2-ease);
+}
+
+body.ui-v2 .aurora-one {
+  background: linear-gradient(135deg, #f0a8c0, #d98cb0);
+  animation: v2-aurora-drift-1 14s ease-in-out infinite alternate;
+}
+
+body.ui-v2 .aurora-two {
+  background: linear-gradient(135deg, #7bbdd4, #5ea0bd);
+  animation: v2-aurora-drift-2 18s ease-in-out infinite alternate;
+}
+
+body.ui-v2 .aurora-three {
+  background: linear-gradient(135deg, #edcf8a, #dbb45c);
+  animation: v2-aurora-drift-3 16s ease-in-out infinite alternate;
+}
+
+body.ui-v2 .grid-glow {
+  opacity: 0.5;
+}
+
+@keyframes v2-aurora-drift-1 {
+  0%   { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(30px, -20px) scale(1.08); }
+}
+@keyframes v2-aurora-drift-2 {
+  0%   { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(-25px, 15px) scale(1.06); }
+}
+@keyframes v2-aurora-drift-3 {
+  0%   { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(20px, 25px) scale(1.10); }
+}
+
+/* ── 进场动画：页面主体淡入上移 ── */
+body.ui-v2 .main-content {
+  animation: v2-fade-in-up var(--v2-duration-slow) var(--v2-ease) both;
+}
+
+@keyframes v2-fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── 链接悬浮统一 ── */
+body.ui-v2 a {
+  transition: color var(--v2-duration) var(--v2-ease);
+}
+
+/* ── flash 消息 ── */
+body.ui-v2 .flash {
+  border-radius: var(--v2-radius-sm);
+  animation: v2-flash-slide-in 0.35s var(--v2-ease-out) both;
+  box-shadow: var(--v2-shadow-sm);
+}
+
+@keyframes v2-flash-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── 页脚皮肤切换链接 ── */
+body.ui-v2 .ui-switch-link {
+  color: var(--v2-text-dim) !important;
+  font-size: 0.82rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: rgba(90, 105, 120, 0.25);
+}
+body.ui-v2 .ui-switch-link:hover {
+  color: var(--v2-accent) !important;
+  text-decoration-color: var(--v2-accent);
+}
+
+/* ── 无障碍：减少动效 ── */
+@media (prefers-reduced-motion: reduce) {
+  body.ui-v2 .aurora,
+  body.ui-v2 .aurora-one,
+  body.ui-v2 .aurora-two,
+  body.ui-v2 .aurora-three {
+    animation: none !important;
+    transition: none !important;
+  }
+  body.ui-v2 .main-content {
+    animation: none !important;
+  }
+  body.ui-v2 .flash {
+    animation: none !important;
+  }
+}
+
+/* ── 降级：不支持 backdrop-filter 时用实色背景 ── */
+@supports not (backdrop-filter: blur(1px)) {
+  body.ui-v2 .glass-panel,
+  body.ui-v2 .card,
+  body.ui-v2 .navbar,
+  body.ui-v2 .wiki-sidebar,
+  body.ui-v2 .wiki-content,
+  body.ui-v2 .chat-container,
+  body.ui-v2 .file-list,
+  body.ui-v2 .auth-card,
+  body.ui-v2 .admin-section {
+    background: rgba(255, 255, 255, 0.92) !important;
+  }
+}

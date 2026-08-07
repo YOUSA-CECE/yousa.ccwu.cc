@@ -7,7 +7,7 @@
 # 示例:
 #   bash server-cmd.sh "cat /opt/yousa/static/version.json"
 #   bash server-cmd.sh "systemctl status yousa --no-pager -l"
-#   bash server-cmd.sh "cd /opt/yousa && git pull --ff-only && systemctl restart yousa"
+#   bash server-cmd.sh "cd /opt/yousa && git pull && systemctl restart yousa"
 
 set -euo pipefail
 
