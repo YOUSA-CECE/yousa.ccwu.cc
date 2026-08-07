@@ -1215,36 +1215,39 @@ body.ui-v2 .file-actions {
 }
 
 body.ui-v2 .file-actions button {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   display: grid;
   place-items: center;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.5);
-  border: 1px solid transparent;
+  border: 1px solid rgba(70, 85, 105, 0.12);
   color: var(--v2-text-muted);
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: 1.05rem;
   transition: background var(--v2-duration) var(--v2-ease),
               color var(--v2-duration) var(--v2-ease),
-              transform var(--v2-duration) var(--v2-ease);
+              transform var(--v2-duration) var(--v2-ease),
+              border-color var(--v2-duration) var(--v2-ease);
 }
 
 body.ui-v2 .file-actions button:hover {
-  background: rgba(196, 90, 130, 0.1);
+  background: rgba(255, 255, 255, 0.8);
   color: var(--v2-accent);
+  border-color: rgba(196, 90, 130, 0.2);
   transform: translateY(-1px);
 }
 
 body.ui-v2 .file-actions .del-btn {
   background: rgba(255, 255, 255, 0.5);
   color: var(--v2-text-muted);
-  border-color: transparent;
+  border-color: rgba(70, 85, 105, 0.12);
 }
 
 body.ui-v2 .file-actions .del-btn:hover {
-  background: rgba(210, 70, 82, 0.12);
+  background: rgba(210, 70, 82, 0.08);
   color: #b43d4b;
+  border-color: rgba(210, 70, 82, 0.2);
 }
 
 /* 返回上级 */
