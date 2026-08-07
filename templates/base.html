@@ -6,6 +6,9 @@
     <meta name="csrf-token" content="{{ csrf_token }}">
     <title>{% block title %}yousa.ccwu.cc{% endblock %}</title>
     <link rel="stylesheet" href="/static/style.css?v={{ asset_version }}">
+    {% if ui_theme == 'v2' %}
+    <link rel="stylesheet" href="/static/ui-v2.css?v={{ ui_v2_version }}">
+    {% endif %}
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23222831'/%3E%3Ctext x='50' y='62' text-anchor='middle' font-size='46' fill='%23f7c8d8' font-family='Times New Roman, serif'%3EY%3C/text%3E%3C/svg%3E">
     <script>
         (function() {
@@ -38,7 +41,7 @@
     </script>
     {% block head %}{% endblock %}
 </head>
-<body>
+<body class="ui-{{ ui_theme }}" data-ui-theme="{{ ui_theme }}">
     <div class="site-backdrop" aria-hidden="true">
         <span class="aurora aurora-one"></span>
         <span class="aurora aurora-two"></span>
@@ -142,6 +145,12 @@
         <span>Flask Personal Blog</span>
         <span class="footer-sep">/</span>
         <span id="footer-time"></span>
+        <span class="footer-sep">/</span>
+        {% if ui_theme == 'v2' %}
+        <a class="ui-switch-link" href="?ui=v1" title="切换回旧版界面">旧版界面</a>
+        {% else %}
+        <a class="ui-switch-link" href="?ui=v2" title="切换到新版界面">新版界面</a>
+        {% endif %}
     </footer>
 
     <script>

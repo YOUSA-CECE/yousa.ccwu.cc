@@ -62,6 +62,17 @@ DB_PATH = Path(os.getenv("DATABASE_PATH", str(BASE_DIR / "users.db"))).resolve()
 TEMPLATES_DIR = BASE_DIR / "templates"
 STATIC_DIR = BASE_DIR / "static"
 Image.MAX_IMAGE_PIXELS = int(os.getenv("MAX_IMAGE_PIXELS", "50000000"))
+
+# ── UI 主题层 ──────────────────────────────────────────────────────
+# v1 = 原始界面（style.css，保持一字节不改）
+# v2 = 美化界面（ui-v2.css 叠加层）
+# 切换：/?ui=v1 或 /?ui=v2，记入 cookie；也可用环境变量设默认值。
+UI_THEMES = ("v1", "v2")
+UI_COOKIE = "yousa_ui"
+UI_DEFAULT = os.getenv("UI_THEME_DEFAULT", "v2")
+if UI_DEFAULT not in UI_THEMES:
+    UI_DEFAULT = "v2"
+
 SAFE_CACHE_PATHS = {"/", "/wiki/", "/blog", "/about", "/app", "/download", "/guestbook"}
 SAFE_CACHE_ENDPOINTS = {
     "home", "wiki_view", "wiki_search", "blog_list", "blog_post",
@@ -488,15 +499,39 @@ def user_or_admin(f):
 
 # ── Context Injector ────────────────────────────────────────────────
 
+def resolve_ui_theme():
+    """决定本次请求用哪套界面。?ui= 优先，其次 cookie，最后默认值。"""
+    cached = getattr(g, "_ui_theme", None)
+    if cached:
+        return cached
+
+    requested = (request.args.get("ui") or "").strip().lower()
+    if requested in UI_THEMES:
+        theme = requested
+        g._ui_theme_persist = theme
+    else:
+        cookie_value = (request.cookies.get(UI_COOKIE) or "").strip().lower()
+        theme = cookie_value if cookie_value in UI_THEMES else UI_DEFAULT
+
+    g._ui_theme = theme
+    return theme
+
+
 @app.context_processor
 def inject_user():
     try:
         asset_version = int((STATIC_DIR / "style.css").stat().st_mtime)
     except OSError:
         asset_version = 1
-return dict(
+    try:
+        ui_v2_version = int((STATIC_DIR / "ui-v2.css").stat().st_mtime)
+    except OSError:
+        ui_v2_version = 1
+    return dict(
         current_user=current_user,
         asset_version=asset_version,
+        ui_v2_version=ui_v2_version,
+        ui_theme=resolve_ui_theme(),
         csrf_token=csrf_token(),
     )
 
@@ -602,6 +637,18 @@ def apply_cache_policy(response):
         )
     ):
         response.headers["Clear-Site-Data"] = '"cache"'
+    # 用户显式用 ?ui= 切过界面就记住，之后正常浏览不用再带参数。
+    persist_theme = getattr(g, "_ui_theme_persist", None)
+    if persist_theme in UI_THEMES:
+        response.set_cookie(
+            UI_COOKIE,
+            persist_theme,
+            max_age=60 * 60 * 24 * 365,
+            samesite="Lax",
+            secure=request.is_secure,
+            httponly=False,
+        )
+
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("X-Frame-Options", "DENY")
     response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
