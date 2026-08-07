@@ -917,10 +917,32 @@ body.ui-v2 .breadcrumb {
   font-size: 0.85rem;
   color: var(--v2-text-dim);
   margin-bottom: 0.85rem;
+  padding: 0.55rem 1.1rem;
+  border-radius: var(--v2-radius-sm);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.2rem;
 }
 
 body.ui-v2 .breadcrumb a {
-  transition: color var(--v2-duration) var(--v2-ease);
+  color: var(--v2-text-muted);
+  text-decoration: none;
+  padding: 0.15rem 0.3rem;
+  border-radius: 4px;
+  transition: color var(--v2-duration) var(--v2-ease),
+              background var(--v2-duration) var(--v2-ease);
+}
+
+body.ui-v2 .breadcrumb a:hover {
+  color: var(--v2-accent);
+  background: rgba(196, 90, 130, 0.06);
+}
+
+body.ui-v2 .breadcrumb-sep {
+  margin: 0 0.25rem;
+  color: var(--v2-text-dim);
+  font-size: 0.75rem;
 }
 
 /* ═══════════════════════════════════════════════
@@ -1311,6 +1333,35 @@ body.ui-v2 .upload-visibility label:hover {
 body.ui-v2 .upload-result {
   margin-top: 0.5rem;
   font-size: 0.85rem;
+}
+
+/* ── 上传进度条 ── */
+body.ui-v2 .upload-progress {
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.35);
+  height: 6px;
+}
+
+body.ui-v2 #upload-progress-bar {
+  background: linear-gradient(90deg, var(--v2-accent), var(--v2-accent-2)) !important;
+  border-radius: 999px;
+  height: 100%;
+  transition: width 0.3s var(--v2-ease-out);
+}
+
+body.ui-v2 #upload-progress-text {
+  font-weight: 500;
+}
+
+/* ── 上传区展开动画 ── */
+body.ui-v2 .upload-zone.open {
+  animation: v2-zone-open 0.3s var(--v2-ease-out) both;
+}
+
+@keyframes v2-zone-open {
+  from { opacity: 0; transform: translateY(-8px); max-height: 0; }
+  to   { opacity: 1; transform: translateY(0); max-height: 600px; }
 }
 
 /* ── 画廊 ── */
@@ -2234,8 +2285,11 @@ body.ui-v2 .album-preview-count {
     transform: none !important;
   }
   body.ui-v2 .feature-card:hover {
-    transform: none !important;
-  }
+      transform: none !important;
+    }
+    body.ui-v2 .upload-zone.open {
+      animation: none !important;
+    }
 }
 
 /* ── 降级：不支持 backdrop-filter 时用实色背景 ── */
