@@ -1069,31 +1069,240 @@ body.ui-v2 .del-btn:hover {
   background: rgba(210, 70, 82, 0.2);
 }
 
+/* ── 云盘头部行 ── */
+body.ui-v2 .cloud-head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+body.ui-v2 .cloud-title-group {
+  min-width: 0;
+}
+
+body.ui-v2 .cloud-title-group h1 {
+  font-size: 1.45rem;
+  letter-spacing: 0.01em;
+}
+
+/* ── 云盘工具栏按钮 ── */
+body.ui-v2 .cloud-btn,
+body.ui-v2 .cloud-btn-primary {
+  border: none;
+  border-radius: 999px;
+  min-height: 40px;
+  padding: 0.45rem 1.1rem;
+  font-size: 0.84rem;
+  font-weight: 500;
+  color: #fff;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: transform var(--v2-duration) var(--v2-ease),
+              box-shadow var(--v2-duration) var(--v2-ease),
+              background var(--v2-duration) var(--v2-ease);
+}
+
+body.ui-v2 .cloud-btn {
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--v2-text);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 1px 3px rgba(55, 70, 88, 0.06);
+}
+
+body.ui-v2 .cloud-btn-primary {
+  background: linear-gradient(135deg, var(--v2-accent), var(--v2-accent-2));
+  box-shadow: 0 4px 14px rgba(196, 90, 130, 0.28);
+}
+
+body.ui-v2 .cloud-btn:hover,
+body.ui-v2 .cloud-btn-primary:hover {
+  transform: translateY(-2px);
+}
+
+body.ui-v2 .cloud-btn-primary:hover {
+  box-shadow: 0 8px 22px rgba(196, 90, 130, 0.36);
+}
+
+body.ui-v2 .cloud-btn:active,
+body.ui-v2 .cloud-btn-primary:active {
+  transform: translateY(1px) scale(0.98);
+}
+
+/* ── 云盘统计 ── */
+body.ui-v2 .cloud-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.6rem;
+}
+
+body.ui-v2 .cloud-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  padding: 3px 12px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  color: var(--v2-text-muted);
+}
+
+body.ui-v2 .cloud-stat strong {
+  color: var(--v2-text);
+  font-weight: 600;
+}
+
+/* ── 云盘文件网格 ── */
+body.ui-v2 .file-list {
+  gap: 0.7rem;
+}
+
+body.ui-v2 .file-item {
+  padding: 0.8rem 1.05rem;
+  border-radius: var(--v2-radius-sm);
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 1px 3px rgba(55, 70, 88, 0.05);
+  transition: transform var(--v2-duration) var(--v2-ease),
+              box-shadow var(--v2-duration) var(--v2-ease),
+              border-color var(--v2-duration) var(--v2-ease);
+}
+
+body.ui-v2 .file-item:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 28px rgba(55, 70, 88, 0.12);
+  border-color: rgba(196, 90, 130, 0.25);
+}
+
+body.ui-v2 .file-icon {
+  font-size: 1.5rem;
+  width: 2.2rem;
+  height: 2.2rem;
+  display: grid;
+  place-items: center;
+  background: rgba(196, 90, 130, 0.08);
+  border-radius: var(--v2-radius-sm);
+  margin-right: 0.85rem;
+}
+
+body.ui-v2 .file-body .name {
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+body.ui-v2 .file-body .name a:hover {
+  color: var(--v2-accent);
+}
+
+body.ui-v2 .file-body .sub {
+  font-size: 0.76rem;
+  color: var(--v2-text-dim);
+}
+
+body.ui-v2 .file-body .notes {
+  font-size: 0.74rem;
+  color: var(--v2-text-muted);
+}
+
+/* ── 文件操作按钮 ── */
+body.ui-v2 .file-actions {
+  gap: 0.3rem;
+}
+
+body.ui-v2 .file-actions button {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid transparent;
+  color: var(--v2-text-muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background var(--v2-duration) var(--v2-ease),
+              color var(--v2-duration) var(--v2-ease),
+              transform var(--v2-duration) var(--v2-ease);
+}
+
+body.ui-v2 .file-actions button:hover {
+  background: rgba(196, 90, 130, 0.1);
+  color: var(--v2-accent);
+  transform: translateY(-1px);
+}
+
+body.ui-v2 .file-actions .del-btn {
+  background: rgba(255, 255, 255, 0.5);
+  color: var(--v2-text-muted);
+  border-color: transparent;
+}
+
+body.ui-v2 .file-actions .del-btn:hover {
+  background: rgba(210, 70, 82, 0.12);
+  color: #b43d4b;
+}
+
+/* 返回上级 */
+body.ui-v2 .file-up {
+  background: rgba(255, 255, 255, 0.4);
+  border: 1px dashed rgba(255, 255, 255, 0.7);
+}
+
 /* ── 上传区域 ── */
-body.ui-v2 .upload-drop-zone {
-  border: 2px dashed rgba(196, 90, 130, 0.25);
+body.ui-v2 .upload-zone {
+  border: 2px dashed rgba(196, 90, 130, 0.28);
   border-radius: var(--v2-radius);
-  padding: 1.5rem;
+  padding: 1.6rem;
   text-align: center;
   color: var(--v2-text-muted);
   transition: border-color var(--v2-duration) var(--v2-ease),
               background var(--v2-duration) var(--v2-ease);
 }
 
-body.ui-v2 .upload-drop-zone:hover {
+body.ui-v2 .upload-zone.dragover {
+  border-color: var(--v2-accent);
+  background: rgba(196, 90, 130, 0.06);
+}
+
+body.ui-v2 .upload-zone p {
+  font-size: 0.88rem;
+}
+
+body.ui-v2 .upload-zone .form-btn {
+  margin-top: 0.4rem;
+}
+
+body.ui-v2 .upload-zone input,
+body.ui-v2 .upload-zone textarea {
+  background: rgba(255, 255, 255, 0.6);
+  border-color: rgba(70, 85, 105, 0.15);
+  border-radius: var(--v2-radius-sm);
+  transition: border-color var(--v2-duration) var(--v2-ease),
+              box-shadow var(--v2-duration) var(--v2-ease);
+}
+
+body.ui-v2 .upload-zone input:focus,
+body.ui-v2 .upload-zone textarea:focus {
+  outline: none;
   border-color: rgba(196, 90, 130, 0.5);
-  background: rgba(196, 90, 130, 0.04);
+  box-shadow: 0 0 0 3px rgba(196, 90, 130, 0.08);
 }
 
-body.ui-v2 .upload-form {
-  margin-bottom: 0.75rem;
+body.ui-v2 .upload-visibility label {
+  border-radius: var(--v2-radius-sm);
+  background: rgba(255, 255, 255, 0.5);
+  border-color: rgba(70, 85, 105, 0.14);
+  transition: background var(--v2-duration) var(--v2-ease),
+              border-color var(--v2-duration) var(--v2-ease);
 }
 
-body.ui-v2 .upload-progress {
-  border-radius: 999px;
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.35);
-  height: 6px;
+body.ui-v2 .upload-visibility label:hover {
+  border-color: rgba(196, 90, 130, 0.4);
 }
 
 body.ui-v2 .upload-result {
@@ -1950,26 +2159,52 @@ body.ui-v2 .album-preview-count {
     font-size: 0.8rem;
   }
 
-  body.ui-v2 .cloud-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.5rem;
-  }
+  body.ui-v2 .cloud-head-row {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.75rem;
+    }
 
-  body.ui-v2 .gallery-header {
+    body.ui-v2 .cloud-toolbar {
+      flex-wrap: wrap;
+      justify-content: flex-start;
+    }
+
+    body.ui-v2 .cloud-btn,
+        body.ui-v2 .cloud-btn-primary {
+          flex: 1;
+          justify-content: center;
+        }
+
+      body.ui-v2 .cloud-header {
+        padding: 1.1rem;
+      }
+
+      body.ui-v2 .upload-zone {
+        padding: 1.1rem;
+      }
+
+      body.ui-v2 .file-item {
+        padding: 0.65rem 0.85rem;
+      }
+
+      body.ui-v2 .file-icon {
+        width: 1.8rem;
+        height: 1.8rem;
+        font-size: 1.2rem;
+        margin-right: 0.65rem;
+      }
+
+      body.ui-v2 .gallery-header {
     flex-direction: column;
     align-items: flex-start;
   }
 
   body.ui-v2 .page-header {
-    flex-direction: column;
-    align-items: flex-start;
+      flex-direction: column;
+      align-items: flex-start;
+    }
   }
-
-  body.ui-v2 .cloud-toolbar {
-    flex-wrap: wrap;
-  }
-}
 
 /* ── 无障碍：减少动效 ── */
 @media (prefers-reduced-motion: reduce) {

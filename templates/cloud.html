@@ -3,8 +3,10 @@
 {% block head %}
 <style>
 .cloud-shell { max-width: 1000px; margin: 0 auto; }
-.cloud-header { padding: 1.5rem 2rem; margin-bottom: 1.5rem; text-align: center; }
-.cloud-toolbar { display: flex; align-items: center; justify-content: center; gap: 0.8rem; margin-top: 0.8rem; flex-wrap: wrap; }
+.cloud-header { padding: 1.5rem 2rem; margin-bottom: 1.5rem; }
+.cloud-head-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 1.5rem; flex-wrap: wrap; }
+.cloud-title-group { min-width: 0; }
+.cloud-toolbar { display: flex; align-items: center; justify-content: flex-end; gap: 0.6rem; flex-wrap: wrap; }
 .cloud-search { display: flex; align-items: center; gap: 0.5rem;
   background: rgba(255,255,255,0.4); border: 1px solid var(--border); border-radius: 999px;
   padding: 0.3rem 0.3rem 0.3rem 1rem; }
@@ -13,9 +15,10 @@
 .cloud-search input:focus { width: 220px; }
 .cloud-search button { background: var(--accent-2); color: #fff; border: none;
   border-radius: 999px; padding: 0.35rem 0.9rem; font-size: 0.8rem; cursor: pointer; }
-.cloud-toolbar button { background: var(--accent); color:#fff; border:none;
+.cloud-toolbar button, .cloud-btn { background: var(--accent-2); color:#fff; border:none;
   border-radius:999px; padding:0.4rem 1rem; font-size:0.82rem; cursor:pointer; transition:opacity 0.2s; }
-.cloud-toolbar button:hover { opacity:0.85; }
+.cloud-toolbar button:hover, .cloud-btn:hover { opacity:0.85; }
+.cloud-btn-primary { background: var(--accent); }
 .download-center-btn {
   display:none; position:fixed; left:50%;
   bottom:calc(1rem + env(safe-area-inset-bottom, 0px));
@@ -43,8 +46,9 @@
 .cloud-app-downloads .cloud-shell {
   padding-bottom:calc(5.75rem + env(safe-area-inset-bottom, 0px));
 }
-.cloud-stats { text-align: center; margin-bottom: 1rem; }
-.cloud-stat { display: inline-block; font-size: 0.85rem; color: var(--text-muted); margin: 0 0.8rem; }
+.cloud-stats { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.6rem; }
+.cloud-stat { display: inline-flex; align-items: center; font-size: 0.8rem; color: var(--text-muted);
+  background: rgba(255,255,255,0.4); padding: 2px 10px; border-radius: 999px; }
 .cloud-stat strong { color: var(--text); }
 .breadcrumb { padding: 0.6rem 1.2rem; margin-bottom: 1rem; border-radius: var(--radius-sm); font-size: 0.9rem; }
 .breadcrumb a { color: var(--accent-2); text-decoration: none; }
@@ -91,9 +95,11 @@
 .upload-result-item.err { color: #e74c3c; }
 @media (max-width: 640px) {
   .file-list { grid-template-columns: 1fr; }
-  .cloud-toolbar { flex-direction: column; }
+  .cloud-head-row { flex-direction: column; align-items: stretch; }
+  .cloud-toolbar { justify-content: flex-start; }
   .cloud-search { width: 100%; }
   .cloud-search input { flex: 1; }
+  .cloud-toolbar button, .cloud-btn { flex: 1; }
   .download-center-btn {
     max-width:calc(100vw - 9rem);
     white-space:nowrap;
@@ -107,34 +113,32 @@
     ondragleave="event.preventDefault();document.getElementById('upload-zone').style.borderColor='var(--border-dark)'"
     ondrop="event.preventDefault();pendingFiles=event.dataTransfer.files;document.getElementById('upload-confirm').style.display='inline-block';document.getElementById('upload-zone').classList.add('has-files');">
     <div class="cloud-header glass-panel">
-        <div>
-            <h1>☁️ 云盘</h1>
-            <p class="page-desc" style="margin-top:0.2rem">文件管理 · 上传 · 下载 · 预览</p>
-        </div>
-        <div class="cloud-toolbar">
-            <div class="cloud-search">
-                <input type="search" id="cloud-filter" placeholder="筛选文件名…" oninput="filterFiles(this.value)">
-                <button onclick="document.getElementById('cloud-filter').value='';filterFiles('')">✕</button>
+            <div class="cloud-head-row">
+                <div class="cloud-title-group">
+                    <h1>☁️ 云盘</h1>
+                    <p class="page-desc" style="margin-top:0.2rem">文件管理 · 上传 · 下载 · 预览</p>
+                    <div class="cloud-stats">
+                        <span class="cloud-stat">📁 <strong>{{ dirs|length }}</strong> 个文件夹</span>
+                        <span class="cloud-stat">📄 <strong>{{ files|length }}</strong> 个文件</span>
+                        {% if total_size %}
+                        <span class="cloud-stat">💾 共 <strong>{{ total_size }}</strong></span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="cloud-toolbar">
+                    <div class="cloud-search">
+                        <input type="search" id="cloud-filter" placeholder="筛选文件名…" oninput="filterFiles(this.value)">
+                        <button onclick="document.getElementById('cloud-filter').value='';filterFiles('')">✕</button>
+                    </div>
+                    <button class="cloud-btn-primary" onclick="toggleUpload()">📤 上传</button>
+                    {% if is_admin %}
+                    <button class="cloud-btn" onclick="promptMkdir()">📁 新建文件夹</button>
+                    {% endif %}
+                </div>
             </div>
-            {% if is_admin %}
-            <button onclick="promptMkdir()">📁 新建文件夹</button>
-            {% endif %}
         </div>
-    </div>
 
-    <div style="text-align:center;margin:0 auto 1rem;width:30%;min-width:120px">
-        <button class="form-btn" style="width:100%;font-size:0.9rem;padding:0.4rem 0" onclick="toggleUpload()">📤 上传文件</button>
-    </div>
-
-    <div class="cloud-stats">
-        <span class="cloud-stat">📁 <strong>{{ dirs|length }}</strong> 个文件夹</span>
-        <span class="cloud-stat">📄 <strong>{{ files|length }}</strong> 个文件</span>
-        {% if total_size %}
-        <span class="cloud-stat">💾 共 <strong>{{ total_size }}</strong></span>
-        {% endif %}
-    </div>
-
-    <!-- Upload drop zone -->
+        <!-- Upload drop zone -->
     <div class="upload-zone glass-panel" id="upload-zone">
         <p>📤 拖拽文件到此处上传，或点击选择</p>
         <input type="file" id="file-input" multiple
