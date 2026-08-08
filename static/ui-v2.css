@@ -973,6 +973,10 @@ body.ui-v2 .cloud-search:focus {
   box-shadow: 0 0 0 3px rgba(196, 90, 130, 0.08);
 }
 
+body.ui-v2 .cloud-search button {
+  padding: 0.35rem 0.4rem;
+}
+
 body.ui-v2 .cloud-stats {
   display: flex;
   gap: 0.5rem;
