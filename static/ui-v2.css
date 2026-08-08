@@ -974,7 +974,7 @@ body.ui-v2 .cloud-search:focus {
 }
 
 body.ui-v2 .cloud-search button {
-  padding: 0.35rem 0.2rem;
+  padding: 0.35rem 0;
 }
 
 body.ui-v2 .cloud-stats {
