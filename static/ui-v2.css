@@ -2234,7 +2234,7 @@ body.ui-v2 .album-preview-count {
 
     body.ui-v2 .cloud-btn,
         body.ui-v2 .cloud-btn-primary {
-          flex: 1;
+          flex: 0 0 auto;
           justify-content: center;
         }
 
