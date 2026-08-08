@@ -55,6 +55,7 @@
 .breadcrumb-sep { margin: 0 0.4rem; color: var(--text-dim); }
 .file-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 0.6rem; }
 .file-item { display: flex; align-items: center; padding: 0.7rem 1rem; border-radius: var(--radius);
+  min-width: 0; box-sizing: border-box;
   transition: transform 0.15s, box-shadow 0.15s; text-decoration: none; color: var(--text);
   background: var(--panel-strong, rgba(255,255,255,0.76)); border: 1px solid var(--border); }
 .file-item:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(65,83,101,0.12); }
