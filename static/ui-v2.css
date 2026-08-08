@@ -1217,6 +1217,10 @@ body.ui-v2 .file-body .name {
   font-size: 0.92rem;
 }
 
+body.ui-v2 .file-body {
+  overflow: hidden;
+}
+
 body.ui-v2 .file-body .name a:hover {
   color: var(--v2-accent);
 }
